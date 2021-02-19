@@ -14,66 +14,62 @@ const isValidAddress = mayAddr => {
 
 class PPUReg {
     constructor() {
-        this.bytes = Array(8)
+        this.innerBytes = Array(8)
         this.regChangedCallbacks
     }
 
     set regChangedCallbacks(v) { this.regChangedCallbacks = v }
 
-    // called by ppu
-    privateGet(idx) { return this.bytes[idx] }
-    privateSet(idx, byte) { this.bytes[idx] = byte }
-
     // called by cpu
     get 0() { throw("WriteOnlyError") }
     set 0(byte) { 
-        this.bytes[0] = byte
-        this.regChangedCallbacks[0] && this.regChangedCallbacks[0]()
+        this.innerBytes[0] = byte
+        this.regChangedCallbacks[0] && this.regChangedCallbacks[0](byte)
     }
 
     get 1() { throw("WriteOnlyError") }
     set 1(byte) {
-        this.bytes[1] = byte
-        this.regChangedCallbacks[1] && this.regChangedCallbacks[1]()
+        this.innerBytes[1] = byte
+        this.regChangedCallbacks[1] && this.regChangedCallbacks[1](byte)
      }
 
     get 2() { 
-        return this.bytes[2]
+        return this.innerBytes[2]
     }
     set 2(byte) { throw("ReadOnlyError") }
 
     get 3() { throw("WriteOnlyError") }
     set 3(byte) {
-        this.bytes[3] = byte
-        this.regChangedCallbacks[3] && this.regChangedCallbacks[3]()
+        this.innerBytes[3] = byte
+        this.regChangedCallbacks[3] && this.regChangedCallbacks[3](byte)
      }
 
     get 4() {
-        return this.bytes[4]
+        return this.innerBytes[4]
      }
     set 4(byte) {
-        this.bytes[4] = byte
-        this.regChangedCallbacks[4] && this.regChangedCallbacks[4]()
+        this.innerBytes[4] = byte
+        this.regChangedCallbacks[4] && this.regChangedCallbacks[4](byte)
      }
 
     get 5() { throw("WriteOnlyError") }
     set 5(byte) { 
-        this.bytes[5] = byte
-        this.regChangedCallbacks[5] && this.regChangedCallbacks[5]()
+        this.innerBytes[5] = byte
+        this.regChangedCallbacks[5] && this.regChangedCallbacks[5](byte)
     }
 
     get 6() { throw("WriteOnlyError") }
     set 6(byte) {
-        this.bytes[6] = byte
-        this.regChangedCallbacks[6] && this.regChangedCallbacks[6]()
+        this.innerBytes[6] = byte
+        this.regChangedCallbacks[6] && this.regChangedCallbacks[6](byte)
      }
 
     get 7() {
-        return this.bytes[7]
+        return this.innerBytes[7]
      }
     set 7(byte) {
-        this.bytes[7] = byte
-        this.regChangedCallbacks[7] && this.regChangedCallbacks[7]()
+        this.innerBytes[7] = byte
+        this.regChangedCallbacks[7] && this.regChangedCallbacks[7](byte)
      }
 }
 
