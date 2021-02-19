@@ -93,8 +93,6 @@ class CPUAddrSpace extends AddrSpace {
         }
     }
 
-    get ppuReg() { return this.ppuReg }
-
     addressing(addr) {
         if (!isValidAddress(addr)) {
             throw(`InvalidAddressError: ${addr} is't a valid address.`)
