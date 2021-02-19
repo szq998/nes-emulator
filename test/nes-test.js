@@ -48,7 +48,7 @@ function operate(cpu) {
 }
 
 function nesTest() {
-  let asCPU = new AS.AddrSpaceCPU();
+  let asCPU = new AS.CPUAddrSpace();
   let rom = game.rom.prg.concat(game.rom.prg);
   asCPU.loadRom(rom);
   let cpu = new CPU(asCPU);

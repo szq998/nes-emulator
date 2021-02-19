@@ -3,7 +3,7 @@ class AddrSpace {
     write(addr, byte) { }
 }
 
-class AddrSpaceCPU extends AddrSpace {
+class CPUAddrSpace extends AddrSpace {
     constructor() {
         super()
         this.ram = []
@@ -17,7 +17,8 @@ class AddrSpaceCPU extends AddrSpace {
     read(addr) {
         if (addr < 0x2000) {
             // ram 0x0000-0x07ff
-            // ram mirror  0x0800-0x0fff  0x1000-0x17ff
+            // ram mirror  0x0800-0x0fff  
+            //             0x1000-0x17ff
             //             0x1800-0x1fff 
             return this.ram[addr & 0x07ff]
         } else if (addr < 0x2008) {
@@ -27,7 +28,7 @@ class AddrSpaceCPU extends AddrSpace {
         } else if (addr < 0x4020) {
             // register 0x4000-0x401f
         } else if (addr < 0x6000) {
-            // expamsion rom 0x4020-0x5fff
+            // expansion rom 0x4020-0x5fff
         } else if (addr < 0x8000) {
             // save ram 0x6000-0x7fff
         } else if (addr < 0xc000) {
@@ -58,15 +59,17 @@ class AddrSpaceCPU extends AddrSpace {
         } else if (addr < 0xc000) {
             // prg-rom 0x8000-0xbfff
             // read only!
+            throw(`ReadOnlyError: address ${addr} is read only.`)
         } else {
             // prg-rom 0xc000-0xffff
             // read only!
+            throw(`ReadOnlyError: address ${addr} is read only.`)
         }
 
     }
 }
 
-class AddrSpacePPU extends AddrSpace {
+class PPUAddrSpace extends AddrSpace {
     constructor() {
         super()
         this.rom 
@@ -113,6 +116,6 @@ class AddrSpacePPU extends AddrSpace {
 }
 
 module.exports = {
-    AddrSpaceCPU: AddrSpaceCPU,
-    AddrSpacePPU: AddrSpacePPU
+    CPUAddrSpace: CPUAddrSpace,
+    PPUAddrSpacePPU: PPUAddrSpace
 }
