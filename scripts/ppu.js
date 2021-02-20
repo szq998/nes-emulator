@@ -35,7 +35,7 @@ class PPU {
         this.vramPointer
         this.ppuAddrStep = 0
 
-        this.bufferedByte
+        this.bufferedByte = 0
     }
 
     // alias for ppuReg
@@ -85,11 +85,11 @@ class PPU {
             // buffer mechanism
             if (this.vramPointer < 0x3f00) {
                 this.ppuData = this.bufferedByte  // only get last buffered data
-                this.bufferedByte = this.addrSpace.read(this.vramPointer)
+                this.bufferedByte = this.addrSpace.read(this.vramPointer, false)
             } else {
                 // immediate update for palette data
-                this.bufferedByte = this.addrSpace.read(this.vramPointer)
-                this.ppuData = this.addrSpace.read(this.vramPointer)
+                this.bufferedByte = this.addrSpace.read(this.vramPointer, false)
+                this.ppuData = this.bufferedByte
             }
         }
     }
@@ -103,8 +103,8 @@ class PPU {
     // render methods
     // every 8x8 background pixels
     setVBlank(callBack) {
-        this.ppuStatus |= PPU.VBLANK_START
-        callBack && callBack()
+        this.ppuStatus |= PPU.VBLANK_START;
+        (this.ppuCtrl & PPU.GEN_NMI_IN_VBLANK) && callBack && callBack()
     }
 
     clearVBlank() {
