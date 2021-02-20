@@ -108,7 +108,7 @@ class PPU {
     }
 
     clearVBlank() {
-        this.ppuStatus &= (~PPU.VBLANK_START & 0xff)
+        this.ppuStatus &= ~PPU.VBLANK_START
     }
 
     getBgPixelsByBlk(rowOfBlk, colomnOfBlk, nTbNo) {
