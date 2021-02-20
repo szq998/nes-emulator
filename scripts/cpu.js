@@ -418,7 +418,9 @@ class CPU {
     }
 
     // operate
+    // console.log(this.reg.pc.toString(16))
     const instr = this.addrSpace.read(this.reg.pc++);  // read instruction
+    // console.log(instr.toString(16))
     let opd1, opd2, addr
     switch (instr) {
       // ctrl 1
