@@ -43,6 +43,23 @@ class CPU {
     // }
   }  // constructor
 
+  // trigue interrupt
+  interrupt(name) {
+    switch (name) {
+      case "reset":
+        this.int.reset = true
+        break
+      case "nmi":
+        this.int.nmi = true
+        break
+      case "irq":
+        this.int.irq = true
+        break
+      default:
+        throw "Illegal interrupt name."
+    }
+  }
+
   // handle interrupt 
   handleReset() {
     // this.reg.s -= 3
@@ -193,7 +210,7 @@ class CPU {
   // alu
   bit(opd2) {
     let and = this.reg.a & opd2
-    this.reg.flag.z = ! and
+    this.reg.flag.z = !and
     this.reg.flag.v = !!(opd2 & 0x40)  // bit 6
     this.reg.flag.s = !!(opd2 & 0x80)  // bit 7
   }
@@ -390,20 +407,18 @@ class CPU {
       this.handleReset()
       this.int.reset = false
       return
-    }
-    if (this.int.nmi) {
+    } else if (this.int.nmi) {
       this.handleNmi()
       this.int.nmi = false
       return
-    }
-    if (!this.reg.flag.i && this.int.irq) {
+    } else if (!this.reg.flag.i && this.int.irq) {
       this.handleIrq()
       this.int.irq = false
       return
     }
 
     // operate
-    let instr = this.addrSpace.read(this.reg.pc++);  // read instruction
+    const instr = this.addrSpace.read(this.reg.pc++);  // read instruction
     let opd1, opd2, addr
     switch (instr) {
       // ctrl 1
