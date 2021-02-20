@@ -18,59 +18,57 @@ class PPUReg {
         this.regChangedCallbacks
     }
 
-    set regChangedCallbacks(v) { this.regChangedCallbacks = v }
-
     // called by cpu
-    get 0() { throw("WriteOnlyError") }
-    set 0(byte) { 
+    get 0() { throw ("WriteOnlyError") }
+    set 0(byte) {
         this.innerBytes[0] = byte
         this.regChangedCallbacks[0] && this.regChangedCallbacks[0](byte)
     }
 
-    get 1() { throw("WriteOnlyError") }
+    get 1() { throw ("WriteOnlyError") }
     set 1(byte) {
         this.innerBytes[1] = byte
         this.regChangedCallbacks[1] && this.regChangedCallbacks[1](byte)
-     }
+    }
 
-    get 2() { 
+    get 2() {
         return this.innerBytes[2]
     }
-    set 2(byte) { throw("ReadOnlyError") }
+    set 2(byte) { throw ("ReadOnlyError") }
 
-    get 3() { throw("WriteOnlyError") }
+    get 3() { throw ("WriteOnlyError") }
     set 3(byte) {
         this.innerBytes[3] = byte
         this.regChangedCallbacks[3] && this.regChangedCallbacks[3](byte)
-     }
+    }
 
     get 4() {
         return this.innerBytes[4]
-     }
+    }
     set 4(byte) {
         this.innerBytes[4] = byte
         this.regChangedCallbacks[4] && this.regChangedCallbacks[4](byte)
-     }
+    }
 
-    get 5() { throw("WriteOnlyError") }
-    set 5(byte) { 
+    get 5() { throw ("WriteOnlyError") }
+    set 5(byte) {
         this.innerBytes[5] = byte
         this.regChangedCallbacks[5] && this.regChangedCallbacks[5](byte)
     }
 
-    get 6() { throw("WriteOnlyError") }
+    get 6() { throw ("WriteOnlyError") }
     set 6(byte) {
         this.innerBytes[6] = byte
         this.regChangedCallbacks[6] && this.regChangedCallbacks[6](byte)
-     }
+    }
 
     get 7() {
         return this.innerBytes[7]
-     }
+    }
     set 7(byte) {
         this.innerBytes[7] = byte
         this.regChangedCallbacks[7] && this.regChangedCallbacks[7](byte)
-     }
+    }
 }
 
 class CPUAddrSpace extends AddrSpace {
@@ -78,7 +76,7 @@ class CPUAddrSpace extends AddrSpace {
         super()
         this.ram = Array(0x07ff)
         this.ppuReg = new PPUReg()
-        this.roms = Array(2) 
+        this.roms = Array(2)
     }
 
     loadRom(rom) {
@@ -89,13 +87,13 @@ class CPUAddrSpace extends AddrSpace {
             this.roms[0] = rom.slice(0, 0x4000)
             this.roms[1] = rom.slice(0x4000, 0x8000)
         } else {
-            throw("Illegal PRG-ROM length.")
+            throw ("Illegal PRG-ROM length.")
         }
     }
 
     addressing(addr) {
         if (!isValidAddress(addr)) {
-            throw(`InvalidAddressError: ${addr} is't a valid address.`)
+            throw (`InvalidAddressError: ${addr} is't a valid address.`)
         }
 
         addr &= 0xffff
@@ -130,12 +128,12 @@ class CPUAddrSpace extends AddrSpace {
 
     write(addr, byte) {
         if (!isByte(byte)) {
-            throw(`NotByteError: value ${byte} is't a byte.`)
+            throw (`NotByteError: value ${byte} is't a byte.`)
         }
 
         const [asPart, idx] = this.addressing(addr)
         if (asPart === this.roms[0] || asPart === this.roms[1]) {
-            throw(`ReadOnlyError: address ${addr} of CPU is read only.`)
+            throw (`ReadOnlyError: address ${addr} of CPU is read only.`)
         }
 
         asPart[idx] = byte
@@ -145,7 +143,7 @@ class CPUAddrSpace extends AddrSpace {
 class PPUAddrSpace extends AddrSpace {
     constructor() {
         super()
-        this.patternTables = Array(2) 
+        this.patternTables = Array(2)
         this.nameTable = Array(0x1000)
         // for (let i = 0; i < 4; i++) {
         //     this.nameTables[0] = {
@@ -162,13 +160,13 @@ class PPUAddrSpace extends AddrSpace {
             this.patternTables[0] = rom.slice(0, 0x1000)
             this.patternTables[1] = rom.slice(0x1000, 0x2000)
         } else {
-            throw("Illegal CHR-ROM length.")
+            throw ("Illegal CHR-ROM length.")
         }
     }
 
     addressing(addr) {
         if (!isValidAddress(addr)) {
-            throw(`InvalidAddressError: ${addr} is't a valid address.`)
+            throw (`InvalidAddressError: ${addr} is't a valid address.`)
         }
 
         addr &= 0x3fff  // mirror 4000-7fff to 0x0000-0x3fff
@@ -200,6 +198,11 @@ class PPUAddrSpace extends AddrSpace {
             // }
         } else {
             // addr &= 0x3f1f  // mirror 0x3f20-0x3fff to 0x03f00-0x3f1f
+            // mirror 3f10 3f14 3f18 3f1c
+            //     to 3f00 3f04 3f08 3f0c
+            if ((addr & 0x0010) && !(addr & 0x0003)) {
+                addr &= 0xffef
+            }
             return [this.palette, addr & 0x01f]
             // if (addr < 0x3f10) {
             //     // background 0x3f00-0x3f0f
@@ -216,12 +219,12 @@ class PPUAddrSpace extends AddrSpace {
 
     write(addr, byte) {
         if (!isByte(byte)) {
-            throw(`NotByteError: value ${byte} is't a byte.`)
+            throw (`NotByteError: value ${byte} is't a byte.`)
         }
 
         const [asPart, idx] = this.addressing(addr)
         if (asPart === this.patternTables[0] || asPart === this.patternTables[1]) {
-            throw(`ReadOnlyError: address ${addr} of PPU is read only.`)
+            throw (`ReadOnlyError: address ${addr} of PPU is read only.`)
         }
 
         asPart[idx] = byte
