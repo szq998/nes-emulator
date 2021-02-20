@@ -1,4 +1,5 @@
 class AddrSpace {
+    loadRom(rom) { }
     read(addr) { }
     write(addr, byte) { }
     addressing(addr) { }
