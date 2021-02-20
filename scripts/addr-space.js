@@ -15,59 +15,66 @@ const isValidAddress = mayAddr => {
 class PPUReg {
     constructor() {
         this.innerBytes = Array(8)
-        this.regChangedCallbacks
+        this.regReadCallbacks
+        this.regWritedCallbacks
     }
 
     // called by cpu
     get 0() { throw ("WriteOnlyError") }
     set 0(byte) {
         this.innerBytes[0] = byte
-        this.regChangedCallbacks[0] && this.regChangedCallbacks[0](byte)
+        this.regWritedCallbacks[0] && this.regWritedCallbacks[0](byte)
     }
 
     get 1() { throw ("WriteOnlyError") }
     set 1(byte) {
         this.innerBytes[1] = byte
-        this.regChangedCallbacks[1] && this.regChangedCallbacks[1](byte)
+        this.regWritedCallbacks[1] && this.regWritedCallbacks[1](byte)
     }
 
     get 2() {
-        return this.innerBytes[2]
+        const byte = this.innerBytes[2]
+        this.regReadCallbacks[2] && this.regReadCallbacks[2](byte)
+        return byte
     }
     set 2(byte) { throw ("ReadOnlyError") }
 
     get 3() { throw ("WriteOnlyError") }
     set 3(byte) {
         this.innerBytes[3] = byte
-        this.regChangedCallbacks[3] && this.regChangedCallbacks[3](byte)
+        this.regWritedCallbacks[3] && this.regWritedCallbacks[3](byte)
     }
 
     get 4() {
-        return this.innerBytes[4]
+        const byte = this.innerBytes[4]
+        this.regReadCallbacks[4] && this.regReadCallbacks[4](byte)
+        return byte
     }
     set 4(byte) {
         this.innerBytes[4] = byte
-        this.regChangedCallbacks[4] && this.regChangedCallbacks[4](byte)
+        this.regWritedCallbacks[4] && this.regWritedCallbacks[4](byte)
     }
 
     get 5() { throw ("WriteOnlyError") }
     set 5(byte) {
         this.innerBytes[5] = byte
-        this.regChangedCallbacks[5] && this.regChangedCallbacks[5](byte)
+        this.regWritedCallbacks[5] && this.regWritedCallbacks[5](byte)
     }
 
     get 6() { throw ("WriteOnlyError") }
     set 6(byte) {
         this.innerBytes[6] = byte
-        this.regChangedCallbacks[6] && this.regChangedCallbacks[6](byte)
+        this.regWritedCallbacks[6] && this.regWritedCallbacks[6](byte)
     }
 
     get 7() {
-        return this.innerBytes[7]
+        const byte = this.innerBytes[7]
+        this.regReadCallbacks[7] && this.regReadCallbacks[7](byte)
+        return byte
     }
     set 7(byte) {
         this.innerBytes[7] = byte
-        this.regChangedCallbacks[7] && this.regChangedCallbacks[7](byte)
+        this.regWritedCallbacks[7] && this.regWritedCallbacks[7](byte)
     }
 }
 
