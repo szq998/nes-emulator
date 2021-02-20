@@ -15,9 +15,9 @@ const isValidAddress = mayAddr => {
 
 class PPUReg {
     constructor() {
-        this.innerBytes = Array(8)
-        this.regReadCallbacks
-        this.regWritedCallbacks
+        this.innerBytes = [0, 0, 0, 0, 0, 0, 0, 0]
+        this.regReadCallbacks = []
+        this.regWritedCallbacks = []
     }
 
     // called by cpu
@@ -116,6 +116,7 @@ class CPUAddrSpace extends AddrSpace {
             return [this.ppuReg, addr & 0x0007]
         } else if (addr < 0x4020) {
             // register 0x4000-0x401f
+            return [[0], 0]
         } else if (addr < 0x6000) {
             // expansion rom 0x4020-0x5fff
         } else if (addr < 0x8000) {
@@ -131,10 +132,12 @@ class CPUAddrSpace extends AddrSpace {
 
     read(addr) {
         const [asPart, idx] = this.addressing(addr)
+        if (typeof (asPart[idx]) === "undefined") throw `Read CPU AddrSpace ${addr.toString(16)} of undefined`
         return asPart[idx]
     }
 
     write(addr, byte) {
+        console.log(`write cpu addrspace ${addr.toString(16)} of ${byte.toString(16)}`)
         if (!isByte(byte)) {
             throw (`NotByteError: value ${byte} is't a byte.`)
         }
@@ -220,12 +223,14 @@ class PPUAddrSpace extends AddrSpace {
         }
     }
 
-    read(addr) {
+    read(addr, preventUndefined = true) {
         const [asPart, idx] = this.addressing(addr)
+        if (preventUndefined && typeof (asPart[idx]) === "undefined") throw `Read PPU AddrSpace ${addr.toString(16)} of undefined`
         return asPart[idx]
     }  // read
 
     write(addr, byte) {
+        console.log(`write ppu addrspace ${addr.toString(16)} of ${byte.toString(16)}`)
         if (!isByte(byte)) {
             throw (`NotByteError: value ${byte} is't a byte.`)
         }
