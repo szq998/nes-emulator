@@ -43,7 +43,7 @@ class CPU {
     // }
   }  // constructor
 
-  // trigue interrupt
+  // trigger interrupt
   interrupt(name) {
     switch (name) {
       case "reset":
