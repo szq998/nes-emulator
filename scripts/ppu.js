@@ -26,8 +26,8 @@ class PPU {
     constructor(addrSpace, ppuReg, drawCallback) {
         this.addrSpace = addrSpace // a.k.a vram
         this.ppuReg = ppuReg
-        this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead, null, null, null, null, null]
-        this.ppuReg.regWritedCallbacks = [null, null, null, null, null, null, this.ppuAddrWrited, this.ppuDataWrited]
+        this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead.bind(this), null, null, null, null, null]
+        this.ppuReg.regWritedCallbacks = [null, null, null, null, null, null, this.ppuAddrWrited.bind(this), this.ppuDataWrited.bind(this)]
 
         this.drawCallback = drawCallback
 
@@ -102,8 +102,8 @@ class PPU {
     }
     // render methods
     // every 8x8 background pixels
-    setVBlack(callBack) {
-        this.ppuStatus |= PPU.VBLANK_START 
+    setVBlank(callBack) {
+        this.ppuStatus |= PPU.VBLANK_START
         callBack && callBack()
     }
 
