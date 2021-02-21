@@ -205,6 +205,7 @@ class CPU {
 
   // flags
   checkFlagZS(src) {
+    /*Todo: change to setter of this.reg.a*/
     this.reg.flag.z = !src
     this.reg.flag.s = !!(src >> 7)
   }
@@ -424,6 +425,7 @@ class CPU {
 
     // operate
     const instr = this.addrSpace.read(this.reg.pc++);  // read instruction
+    this.logger && this.logger.push(`cpu instruction ${instr.toString(16)}`)
     let opd1 /*opd1 is reg a*/, opd2, addr
     switch (instr) {
       // ctrl 1
@@ -1526,7 +1528,6 @@ class CPU {
         break
     }  // switch-case
 
-    this.logger && this.logger.push(`cpu instruction ${instr.toString(16)}`)
     this.logger && typeof(opd2) !== "undefined" && this.logger.push(`opd1 ${this.reg.a.toString(16)}`)
     this.logger && typeof(opd2) !== "undefined" && this.logger.push(`opd2 ${opd2.toString(16)}`)
     this.logger && typeof(addr) !== "undefined" && this.logger.push(`addr ${addr.toString(16)}`)

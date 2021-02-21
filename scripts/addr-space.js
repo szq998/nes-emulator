@@ -1,5 +1,5 @@
 class AddrSpace {
-    constructor(logger=null) {
+    constructor(logger = null) {
         this.logger = logger
     }
     loadRom(rom) { }
@@ -83,7 +83,7 @@ class PPUReg {
 }
 
 class CPUAddrSpace extends AddrSpace {
-    constructor(logger=null) {
+    constructor(logger = null) {
         super(logger)
         this.ram = Array(0x07ff)
         this.ppuReg = new PPUReg()
@@ -140,23 +140,24 @@ class CPUAddrSpace extends AddrSpace {
         const [asPart, idx] = this.addressing(addr)
         const byte = asPart[idx]
 
-        if (!isByte(byte)) throw `NotByteError: read CPUAddrSpace ${addr.toString(16)} of ${byte}`
-        this.logger && this.logger.push(`read CPUAddrSpace ${addr.toString(16)} of ${byte.toString(16)}`)
+        // if (!isByte(byte)) throw `NotByteError: read CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte}`
+        const logedByte = typeof(byte) === "undefined" ? -1 : byte
+        this.logger && this.logger.push(`read CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${logedByte.toString(16).padStart(2, "0")}`)
 
-        return byte
+        return typeof(byte) === "undefined" ? 0 : byte
 
         // return asPart[idx]
     }
 
     write(addr, byte) {
         if (!isByte(byte)) {
-            throw `NotByteError: attempt to write ${byte} to CPUAddrSpace at ${addr.toString(16)}.`
+            throw `NotByteError: attempt to write ${byte} to CPUAddrSpace at ${addr.toString(16).padStart(4, "0")}.`
         }
-        this.logger && this.logger.push(`write CPUAddrSpace ${addr.toString(16)} of ${byte.toString(16)}`)
+        this.logger && this.logger.push(`write CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
 
         const [asPart, idx] = this.addressing(addr)
         if (asPart === this.roms[0] || asPart === this.roms[1]) {
-            throw `ReadOnlyError: attempt to write ${byte.toString(10)} to CPUAddrSpace at ${addr.toString(16)}.`
+            throw `ReadOnlyError: attempt to write ${byte.toString(16).padStart(2, "0")} to CPUAddrSpace at ${addr.toString(16).padStart(4, "0")}.`
         }
 
         asPart[idx] = byte
@@ -164,7 +165,7 @@ class CPUAddrSpace extends AddrSpace {
 }
 
 class PPUAddrSpace extends AddrSpace {
-    constructor(logger=null) {
+    constructor(logger = null) {
         super(logger)
         this.patternTables = Array(2)
         this.nameTable = Array(0x1000)
@@ -240,8 +241,16 @@ class PPUAddrSpace extends AddrSpace {
         const [asPart, idx] = this.addressing(addr)
         const byte = asPart[idx]
 
-        if (preventUndefined && !isByte(byte)) throw `NotByteError: read PPUAddrSpace ${addr.toString(16)} of ${byte}`
-        this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16)} of ${byte && byte.toString(16)}`)
+        if (preventUndefined) {
+            if (!isByte(byte)) throw `NotByteError: read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte}`
+            this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
+        } else {
+            if (typeof (byte) === "undefined") {
+                this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of undefined`)
+            } else {
+                this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
+            }
+        }
 
         return byte
 
@@ -250,13 +259,13 @@ class PPUAddrSpace extends AddrSpace {
 
     write(addr, byte) {
         if (!isByte(byte)) {
-            throw `NotByteError: attempt to write ${byte} to PPUAddrSpace at ${addr.toString(16)}.`
+            throw `NotByteError: attempt to write ${byte} to PPUAddrSpace at ${addr.toString(16).padStart(4, "0")}.`
         }
-        this.logger && this.logger.push(`write PPUAddrSpace ${addr.toString(16)} of ${byte.toString(16)}`)
+        this.logger && this.logger.push(`write PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
 
         const [asPart, idx] = this.addressing(addr)
         if (asPart === this.patternTables[0] || asPart === this.patternTables[1]) {
-            throw `ReadOnlyError: attempt to write ${byte.toString(10)} to PPUAddrSpace at ${addr.toString(16)}.`
+            throw `ReadOnlyError: attempt to write ${byte.toString(16).padStart(2, "0")} to PPUAddrSpace at ${addr.toString(16).padStart(4, "0")}.`
         }
 
         asPart[idx] = byte
