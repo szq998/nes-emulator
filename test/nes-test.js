@@ -1,152 +1,345 @@
-let CPU = require("../scripts/cpu");
-let AS = require("../scripts/addr-space");
-let game = require("../scripts/rom-loader");
+const Machine = require("../scripts/machine.js")
 
-let log = []
 
-function fill0(str, num) {
-  if (str.length < num) {
-    let needFill = num - str.length
-    while (needFill--) {
-      str = "0" + str
-    }
-  }
-  return str
-}
+const log = []
+const cpuLog = []
+const cpuAddrSpaceLog = []
+const ppuAddrSpaceLog = []
+// let asCPU = new AS.CPUAddrSpace();
+// let rom = game.rom.prg //.concat(game.rom.prg);
+// asCPU.loadRom(rom);
+// let cpu = new CPU(asCPU);
+// cpu.reg.pc = 0xc000;
+const ROMPATH = "./assets/nestest.nes";
+// const ROMPATH = "./assets/BOMBMAN.NES";
+const romFile = $file.read(ROMPATH);
+const romString = romFile.toString();
 
-function getRamWithLino(ram) {
-  let rwl = []
-  for (let i = 0; i < ram.length; ++i) {
-    let lino = fill0(i.toString(16), 3)
-    if (ram[i]) {
-      rwl.push(lino + ":   " + fill0(ram[i].toString(16), 2))
+const fc = new Machine({
+  cpu: cpuLog,
+  cpuAddrSpace: cpuAddrSpaceLog,
+  ppuAddrSpace: ppuAddrSpaceLog
+})
+fc.loadRom(romString)
+console.log(fc.gameRom.header)
+
+
+function getMemWithLino(mem, numPad, startLino = 0) {
+  const linoed = []
+
+  for (let i = 0; i < mem.length; i++) {
+    const byte = mem[i]
+    const lino = (i + startLino).toString(16).padStart(numPad, "0")
+    if (typeof (byte) === "undefined") {
+      linoed.push(`${lino}: undefined`)
     } else {
-      rwl.push(lino + ": undifined")
+      linoed.push(`${lino}: ${byte.toString(16).padStart(2, "0")}`)
     }
   }
-  return rwl
+  return linoed
 }
 
-function operate(cpu) {
-  let line =  // (log.length + 1).toString() + " "
-    "PC:" +
-    fill0(cpu.reg.pc.toString(16).toUpperCase(), 4) +
-    " A:" +
-    fill0(cpu.reg.a.toString(16).toUpperCase(), 2) +
-    " X:" +
-    fill0(cpu.reg.x.toString(16).toUpperCase(), 2) +
-    " Y:" +
-    fill0(cpu.reg.y.toString(16).toUpperCase(), 2) +
-    " P:" +
-    fill0(cpu.flags2byte().toString(16).toUpperCase(), 2) +
-    " SP:" +
-    fill0(cpu.reg.s.toString(16).toUpperCase(), 2)
-  console.log((log.length + 1).toString() + " " + line);
-  cpu.operate();
-  log.push(line)
-  //  }
+function getRamList() {
+  return {
+    type: "list",
+    props: {
+      id: "ram",
+      data: getMemWithLino(fc.cpuAddrSpace.ram, 3)
+    },
+    layout: (make, view) => {
+      make.height.equalTo(view.super)
+      make.width.equalTo(150)
+      make.left.top.equalTo(view.super)
+    },
+
+  }
+}
+
+function getVRamNameTableList() {
+  return {
+    type: "list",
+    props: {
+      id: "vramName",
+      data: getMemWithLino(fc.ppuAddrSpace.nameTable, 4, 0x2000)
+    },
+    layout: (make, view) => {
+      make.height.equalTo(view.super)
+      make.width.equalTo(160)
+      make.right.top.equalTo(view.super)
+    },
+
+  }
+}
+
+function getVRamvPaletteList() {
+  return {
+    type: "list",
+    props: {
+      id: "vramPalette",
+      data: getMemWithLino(fc.ppuAddrSpace.palette, 4, 0x3f00)
+    },
+    layout: (make, view) => {
+      make.height.equalTo(view.super)
+      make.width.equalTo(160)
+      make.top.equalTo(view.super)
+      make.right.equalTo($("vramName").left)
+    },
+
+  }
+}
+
+function getOperateButton() {
+  return {
+    type: "button",
+    props: {
+      id: "operate",
+      title: "operate"
+    },
+    layout: (make, view) => {
+      make.size.equalTo($size(110, 40))
+      make.centerX.equalTo(view.super)
+      make.centerY.equalTo(view.super).offset(-100)
+    },
+    events: {
+      tapped: function (sender) {
+        // operate(fc.cpu)
+        // fc.work() 
+        let num = Number($("operateTimes").text)
+        $("operateTimes").blur()
+
+        if (!num) num = 1
+        while (num--) {
+          operateWithLog()
+        }
+      }
+    }
+  }
+}
+
+function getOperateTimesInput() {
+  return {
+    type: "input",
+    props: {
+      id: "operateTimes",
+      type: $kbType.number
+    },
+    layout: (make, view) => {
+      make.size.equalTo($size(100, 35))
+      make.centerY.equalTo($("operate"))
+      make.right.equalTo($("operate").left).offset(-20)
+    }
+  }
+}
+
+function getRamRefreshButton() {
+  return {
+    type: "button",
+    props: {
+      id: "ramRef",
+      title: "check RAM"
+    },
+    layout: (make, view) => {
+      make.size.equalTo($size(110, 40))
+      make.centerX.equalTo(view.super)
+      make.top.equalTo($("operateTimes").bottom).offset(30)
+    },
+    events: {
+      tapped: function (sender) {
+        $("ram").data = getMemWithLino(fc.cpuAddrSpace.ram, 3)
+      }
+    },
+  }
+}
+
+function getVRamRefreshButton() {
+  return {
+    type: "button",
+    props: {
+      id: "vramRef",
+      title: "check VRAM"
+    },
+    layout: (make, view) => {
+      make.size.equalTo($size(110, 40))
+      make.centerX.equalTo(view.super)
+      make.top.equalTo($("ramRef").bottom).offset(30)
+    },
+    events: {
+      tapped: function (sender) {
+        $("vramName").data = getMemWithLino(fc.ppuAddrSpace.nameTable, 4, 0x2000)
+        $("vramPalette").data = getMemWithLino(fc.ppuAddrSpace.palette, 4, 0x3f00)
+      }
+    },
+  }
+}
+
+function getPrintLogButton() {
+  return {
+    type: "button",
+    props: {
+      id: "printLog",
+      title: "print log",
+      info: [-10, undefined],
+      menu: {
+        title: "set print index",
+        items: [
+          {
+            title: "start",
+            handler: sender => {
+              $input.text({
+                type: $kbType.number,
+                placeholder: "start",
+                text: sender.info[0],
+                handler: function (text) {
+                  if (isNaN(Number(text))) return
+                  sender.info = [Number(text), sender.info[1]]
+                }
+              });
+            }
+          },
+          {
+            title: "end",
+            handler: sender => {
+              $input.text({
+                type: $kbType.number,
+                placeholder: "end",
+                text: sender.info[1],
+                handler: function (text) {
+                  sender.info = [sender.info[0], Number(text) || undefined]
+                }
+              });
+            }
+          }
+        ]
+      }
+    },
+    layout: (make, view) => {
+      make.size.equalTo($size(110, 40))
+      make.centerX.equalTo(view.super)
+      make.top.equalTo($("vramRef").bottom).offset(30)
+    },
+    events: {
+      tapped: (sender) => {
+        if (log.length === 0) return
+        console.log(log.slice(sender.info[0], sender.info[1] || undefined).join("\n"))
+      }
+    }
+  }
+}
+
+function getSaveLogButton() {
+  return {
+    type: "button",
+    props: {
+      id: "saveLog",
+      title: "save log"
+    },
+    layout: (make, view) => {
+      make.size.equalTo($size(110, 40))
+      make.centerX.equalTo(view.super)
+      make.top.equalTo($("printLog").bottom).offset(30)
+    },
+    events: {
+      tapped: function (sender) {
+        $input.text({
+          text: "test-log.txt",
+          handler: function (text) {
+            const success = $file.write({
+              data: $data({ string: log.join('\n') }),
+              path: text
+            })
+            if (success) {
+              $ui.success(`log saved to /${text}`)
+            } else {
+              $ui.error("save log failed");
+            }
+          }
+        })
+      }
+    }
+  }
+}
+
+function getSetVBlankButton() {
+  return {
+    type: "button",
+    props: {
+      id: "setVB",
+      title: "set VBlank"
+    },
+    layout: (make, view) => {
+      make.size.equalTo($size(110, 40))
+      make.centerY.equalTo($("operate"))
+      make.left.equalTo($("operate").right).offset(20)
+    },
+    events: {
+      tapped: function (sender) {
+        fc.setVBlank()
+      }
+    },
+  }
+}
+
+function getClearVBlankButton() {
+  return {
+    type: "button",
+    props: {
+      id: "clrVB",
+      title: "clear VBlank"
+    },
+    layout: (make, view) => {
+      make.size.equalTo($size(110, 40))
+      make.centerX.equalTo($("setVB"))
+      make.top.equalTo($("ramRef"))
+    },
+    events: {
+      tapped: function (sender) {
+        fc.clearVBlank()
+      }
+    },
+  }
+}
+
+operateWithLog.lino = 1
+function operateWithLog() {
+  const to16pad4 = num => num.toString(16).toUpperCase().padStart(4, "0")
+  const to16pad2 = num => num.toString(16).toUpperCase().padStart(2, "0")
+
+  const reg = fc.cpu.reg
+  const flagByte = fc.cpu.flags2byte()
+  // record reg
+  const currLogLine = []
+
+  currLogLine.push(
+    `${operateWithLog.lino++} PC:${to16pad4(reg.pc)} A:${to16pad2(reg.a)} X:${to16pad2(reg.x)} Y:${to16pad2(reg.y)} P:${to16pad2(flagByte)} SP:${to16pad2(reg.s)}`
+  )
+
+  fc.cpu.operate()
+
+  currLogLine.push(cpuLog.pop())
+  currLogLine.push(cpuAddrSpaceLog.splice(0).join(" "))
+  currLogLine.push(ppuAddrSpaceLog.splice(0).join(" "))
+  log.push(currLogLine.join("\t"))
 }
 
 function nesTest() {
-  let asCPU = new AS.CPUAddrSpace();
-  let rom = game.rom.prg.concat(game.rom.prg);
-  asCPU.loadRom(rom);
-  let cpu = new CPU(asCPU);
-  cpu.reg.pc = 0xc000;
-
   $ui.render({
     views: [
-      {
-        type: "button",
-        props: {
-          id: "operate",
-          title: "operate"
-        },
-        layout: (make, view) => {
-          make.size.equalTo($size(100, 50))
-          make.center.equalTo(view.super)
-        },
-        events: {
-          tapped: function (sender) {
-            operate(cpu)
-          }
-        },
-      },
-      {
-        type: "input",
-        props: {
-          id: "operateN"
-        },
-        layout: (make, view) => {
-          make.size.equalTo($size(100, 35))
-          make.centerX.equalTo(view.super)
-          make.top.equalTo($("operate").bottom).offset(40)
-        },
-        events: {
-          returned: function (sender) {
-            let num = Number(sender.text)
-            while (num--) {
-              operate(cpu)
-            }
-          }
-        }
-      },
-      {
-        type: "list",
-        props: {
-          id: "ram",
-          data: getRamWithLino(asCPU.ram)
-        },
-        layout: (make, view) => {
-          make.height.equalTo(view.super)
-          make.width.equalTo(150)
-          make.left.top.equalTo(view.super)
-        },
+      getRamList(),
+      getVRamNameTableList(),
+      getVRamvPaletteList(),
 
-      },
-      {
-        type: "button",
-        props: {
-          id: "rfRam",
-          title: "refresh ram"
-        },
-        layout: (make, view) => {
-          make.size.equalTo($size(100, 40))
-          make.centerX.equalTo(view.super)
-          make.top.equalTo($("operateN").bottom).offset(40)
-        },
-        events: {
-          tapped: function (sender) {
-            $("ram").data = getRamWithLino(asCPU.ram)
-          }
-        },
-      },
-      {
-        type: "button",
-        props: {
-          id: "saveBtn",
-          title: "save log"
-        },
-        layout: (make, view) => {
-          make.size.equalTo($size(100, 40))
-          make.centerX.equalTo(view.super)
-          make.top.equalTo($("rfRam").bottom).offset(40)
-        },
-        events: {
-          tapped: function (sender) {
-            let logPath = "test_log.log"
-            let logStr = log.join('\n')
-            let success = $file.write({
-              data: $data({ string: logStr }),
-              path: logPath
-            });
-            console.log("save log " + success)
-          }
-        },
-      }
+      getOperateButton(),
+      getOperateTimesInput(),
+      getRamRefreshButton(),
+      getVRamRefreshButton(),
+      getPrintLogButton(),
+      getSaveLogButton(),
+
+      getSetVBlankButton(),
+      getClearVBlankButton(),
     ]
   })
 
 }
 
-module.exports = nesTest;
+module.exports = nesTest
