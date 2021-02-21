@@ -1,4 +1,7 @@
 class AddrSpace {
+    constructor(logger=null) {
+        this.logger = logger
+    }
     loadRom(rom) { }
     read(addr) { }
     write(addr, byte) { }
@@ -80,8 +83,8 @@ class PPUReg {
 }
 
 class CPUAddrSpace extends AddrSpace {
-    constructor() {
-        super()
+    constructor(logger=null) {
+        super(logger)
         this.ram = Array(0x07ff)
         this.ppuReg = new PPUReg()
         this.roms = Array(2)
@@ -113,6 +116,7 @@ class CPUAddrSpace extends AddrSpace {
             return [this.ram, addr & 0x07ff]
         } else if (addr < 0x4000) {
             // ppu register 0x2008-0x3fff
+            // console.log(`ppuReg ${addr & 0x0007} accessed`)
             return [this.ppuReg, addr & 0x0007]
         } else if (addr < 0x4020) {
             // register 0x4000-0x401f
@@ -134,25 +138,25 @@ class CPUAddrSpace extends AddrSpace {
 
     read(addr) {
         const [asPart, idx] = this.addressing(addr)
-        
         const byte = asPart[idx]
-        if (typeof (byte) === "undefined") throw `Read CPU AddrSpace ${addr.toString(16)} of undefined`
-        console.log(`read cpu addrspace ${addr.toString(16)} of ${byte.toString(16)}`)
+
+        if (!isByte(byte)) throw `NotByteError: read CPUAddrSpace ${addr.toString(16)} of ${byte}`
+        this.logger && this.logger.push(`read CPUAddrSpace ${addr.toString(16)} of ${byte.toString(16)}`)
+
         return byte
 
         // return asPart[idx]
     }
 
     write(addr, byte) {
-        console.log(`write cpu addrspace ${addr.toString(16)} of ${byte.toString(16)}`)
-
         if (!isByte(byte)) {
-            throw `NotByteError: value ${byte} is't a byte.`
+            throw `NotByteError: attempt to write ${byte} to CPUAddrSpace at ${addr.toString(16)}.`
         }
+        this.logger && this.logger.push(`write CPUAddrSpace ${addr.toString(16)} of ${byte.toString(16)}`)
 
         const [asPart, idx] = this.addressing(addr)
         if (asPart === this.roms[0] || asPart === this.roms[1]) {
-            throw `ReadOnlyError: address ${addr} of CPU is read only.`
+            throw `ReadOnlyError: attempt to write ${byte.toString(10)} to CPUAddrSpace at ${addr.toString(16)}.`
         }
 
         asPart[idx] = byte
@@ -160,8 +164,8 @@ class CPUAddrSpace extends AddrSpace {
 }
 
 class PPUAddrSpace extends AddrSpace {
-    constructor() {
-        super()
+    constructor(logger=null) {
+        super(logger)
         this.patternTables = Array(2)
         this.nameTable = Array(0x1000)
         // for (let i = 0; i < 4; i++) {
@@ -234,25 +238,25 @@ class PPUAddrSpace extends AddrSpace {
 
     read(addr, preventUndefined = true) {
         const [asPart, idx] = this.addressing(addr)
-
         const byte = asPart[idx]
-        if (preventUndefined && typeof (byte === "undefined")) throw `Read PPU AddrSpace ${addr.toString(16)} of undefined`
-        console.log(`read ppu addrspace ${addr.toString(16)} of ${byte.toString(16)}`)
+
+        if (preventUndefined && !isByte(byte)) throw `NotByteError: read PPUAddrSpace ${addr.toString(16)} of ${byte}`
+        this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16)} of ${byte && byte.toString(16)}`)
+
         return byte
 
         // return asPart[idx]
     }  // read
 
     write(addr, byte) {
-        console.log(`write ppu addrspace ${addr.toString(16)} of ${byte.toString(16)}`)
-
         if (!isByte(byte)) {
-            throw `NotByteError: value ${byte} is't a byte.`
+            throw `NotByteError: attempt to write ${byte} to PPUAddrSpace at ${addr.toString(16)}.`
         }
+        this.logger && this.logger.push(`write PPUAddrSpace ${addr.toString(16)} of ${byte.toString(16)}`)
 
         const [asPart, idx] = this.addressing(addr)
         if (asPart === this.patternTables[0] || asPart === this.patternTables[1]) {
-            throw `ReadOnlyError: address ${addr} of PPU is read only.`
+            throw `ReadOnlyError: attempt to write ${byte.toString(10)} to PPUAddrSpace at ${addr.toString(16)}.`
         }
 
         asPart[idx] = byte

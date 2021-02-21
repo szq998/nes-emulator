@@ -315,9 +315,9 @@ function operateWithLog() {
 
   fc.cpu.operate()
 
-  currLogLine.push(cpuLog.pop())
-  currLogLine.push(cpuAddrSpaceLog.splice(0).join(" "))
+  currLogLine.push(cpuLog.splice(0).join(" "))
   currLogLine.push(ppuAddrSpaceLog.splice(0).join(" "))
+  currLogLine.push(cpuAddrSpaceLog.splice(0).join(" "))
   log.push(currLogLine.join("\t"))
 }
 
