@@ -133,11 +133,14 @@ class CPUAddrSpace extends AddrSpace {
     }
 
     read(addr) {
-        console.log(`read cpu addrspace ${addr.toString(16)}`)
-
         const [asPart, idx] = this.addressing(addr)
-        if (typeof (asPart[idx]) === "undefined") throw `Read CPU AddrSpace ${addr.toString(16)} of undefined`
-        return asPart[idx]
+        
+        const byte = asPart[idx]
+        if (typeof (byte) === "undefined") throw `Read CPU AddrSpace ${addr.toString(16)} of undefined`
+        console.log(`read cpu addrspace ${addr.toString(16)} of ${byte.toString(16)}`)
+        return byte
+
+        // return asPart[idx]
     }
 
     write(addr, byte) {
@@ -230,11 +233,14 @@ class PPUAddrSpace extends AddrSpace {
     }
 
     read(addr, preventUndefined = true) {
-        console.log(`read ppu addrspace ${addr.toString(16)}`)
-
         const [asPart, idx] = this.addressing(addr)
-        if (preventUndefined && typeof (asPart[idx]) === "undefined") throw `Read PPU AddrSpace ${addr.toString(16)} of undefined`
-        return asPart[idx]
+
+        const byte = asPart[idx]
+        if (preventUndefined && typeof (byte === "undefined")) throw `Read PPU AddrSpace ${addr.toString(16)} of undefined`
+        console.log(`read ppu addrspace ${addr.toString(16)} of ${byte.toString(16)}`)
+        return byte
+
+        // return asPart[idx]
     }  // read
 
     write(addr, byte) {
