@@ -26,7 +26,7 @@ class PPU {
     constructor(addrSpace, ppuReg, drawCallback) {
         this.addrSpace = addrSpace // a.k.a vram
         this.ppuReg = ppuReg
-        this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead.bind(this), null, null, null, null, null]
+        this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead.bind(this), null, null, null, null, this.ppuDataRead.bind(this)]
         this.ppuReg.regWritedCallbacks = [null, null, null, null, null, null, this.ppuAddrWrited.bind(this), this.ppuDataWrited.bind(this)]
 
         this.drawCallback = drawCallback
@@ -35,7 +35,7 @@ class PPU {
         this.vramPointer
         this.ppuAddrStep = 0
 
-        this.bufferedByte = 0
+        this.bufferedByte
     }
 
     // alias for ppuReg
@@ -71,6 +71,11 @@ class PPU {
         this.clearVBlank()
     }
 
+    ppuDataRead(byte) {
+        // increase ppuAddr
+        this.vramPointer += (this.ppuCtrl & PPU.VRAM_ADDR_INCR ? 32 : 1)
+    }
+
     // callbacks when ppuReg writed
     ppuAddrWrited(byte) {
         if (this.ppuAddrStep == 0) {
@@ -84,7 +89,8 @@ class PPU {
             // write to ppuReg
             // buffer mechanism
             if (this.vramPointer < 0x3f00) {
-                this.ppuData = this.bufferedByte  // only get last buffered data
+                // only get last buffered data
+                this.ppuData = /*typeof(this.bufferedByte) === "undefined" ? 0:*/ this.bufferedByte
                 this.bufferedByte = this.addrSpace.read(this.vramPointer, false)
             } else {
                 // immediate update for palette data
