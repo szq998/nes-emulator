@@ -96,7 +96,7 @@ class PPU {
 
     ppuDataWrited(byte) {
         // write to addrSpace
-        this.addrSpace.write(this.ppuAddrbyte, byte)
+        this.addrSpace.write(this.vramPointer, byte)
         // increase ppuAddr
         this.vramPointer += (this.ppuCtrl & PPU.VRAM_ADDR_INCR ? 32 : 1)
     }
