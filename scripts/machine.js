@@ -26,6 +26,7 @@ class Machine {
     this.gameRom = new GameRom(romString)
     this.cpuAddrSpace.loadRom(this.gameRom.prgRom)
     this.ppuAddrSpace.loadRom(this.gameRom.chrRom)
+    this.ppuAddrSpace.isFourScreen = this.gameRom.header.isFourScreen
     this.cpu.interrupt("reset")
     // this.cpu.reg.pc = 0xc000
 
@@ -35,7 +36,7 @@ class Machine {
   setVBlank() {
     this.ppu.setVBlank(() => {
       this.cpu.interrupt("nmi")
-      console.log("cpu in nmi")
+      // console.log("cpu in nmi")
     })
   }
 

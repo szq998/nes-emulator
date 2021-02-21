@@ -169,14 +169,9 @@ class PPUAddrSpace extends AddrSpace {
         super(logger)
         this.patternTables = Array(2)
         this.nameTable = Array(0x1000)
-        // for (let i = 0; i < 4; i++) {
-        //     this.nameTables[0] = {
-        //         nameTable: Array(960),
-        //         attributeTable: Array(64)
-        //     }
-        // }
-
         this.palette = Array(0x0020)
+
+        this.isFourScreen = false
     }  // constructor
 
     loadRom(rom) {
@@ -202,7 +197,7 @@ class PPUAddrSpace extends AddrSpace {
             return [this.patternTables[1], addr & 0x0fff]
         } else if (addr < 0x3f00) {
             // addr &= 0x2fff  // mirror 0x3000-3eff to 0x2000-2eff
-            return [this.nameTable, addr & 0x0fff]
+            return [this.nameTable, addr & (this.isFourScreen ? 0x0fff : 0x07ff)]
             // if (addr < 0x23c0) {
             //     // name table 0 0x2000-0x23bf
             // } else if (addr < 0x2400) {
