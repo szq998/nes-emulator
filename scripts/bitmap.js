@@ -53,7 +53,7 @@ class BitMap8Bit {
             throw "Illegal color palette."
         }
 
-        const bytesPadedPerRow = 4 - width % 4
+        const bytesPadedPerRow = width % 4 ? 4 - width % 4 : 0
         this.width = width
         this.widthWithPad = width + bytesPadedPerRow
         this.height = height
@@ -64,6 +64,7 @@ class BitMap8Bit {
         const biHeaderSize = 40
         const headerSize = bfHeaderSize + biHeaderSize
         const bfOffBits = headerSize + colorCount * 4
+        this.imgStart = bfOffBits
         const bfSize = bfOffBits + biSizeImage
 
         this.data = new Uint8Array(bfSize)
@@ -73,6 +74,8 @@ class BitMap8Bit {
         this.setHeaderValue(bfSize, ...header.bfSize)
         this.setHeaderValue(0, ...header.bfReserved)
         this.setHeaderValue(bfOffBits, ...header.bfOffBits)
+
+        this.setHeaderValue(biHeaderSize, ...header.biSize)
         this.setHeaderValue(width, ...header.biWidth)
         this.setHeaderValue(-height, ...header.biHeight)
         this.setHeaderValue(1, ...header.biPlanes)
@@ -97,14 +100,20 @@ class BitMap8Bit {
         let setterName = "set"
         setterName += (signed ? "Int" : "Uint")
         setterName += (size < 4 ? "16" : "32")
-        this.dataView[setterName](offset, val)
+        this.dataView[setterName](offset, val, true)
     }
 
     get bmp() { return this.data }
 
-    setPixelBlock(blkStartX, blkStartY, blkSizeX, blkSizeY, blk) {
-        for (let i = 0; i < blkSizeY; i++) {
-            this.data.set(blk.slice(i * blkSizeY, blkSizeX), blkStartX + (i + blkStartY) * this.widthWithPad)
+    setPixelBlock(row, colomn, blkRowSize, blkColomnSize, blkPixels) {
+        for (let i = 0; i < blkColomnSize; i++) {
+            const sliceStart = i * blkRowSize
+            const sliced = blkPixels.slice(sliceStart, sliceStart + blkRowSize)
+
+            this.data.set(sliced, this.imgStart + this.widthWithPad * (i + row) + colomn)
         }
     }
 }
+
+
+module.exports = BitMap8Bit
