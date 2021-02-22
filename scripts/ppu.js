@@ -91,7 +91,9 @@ class PPU {
         // write to oamAddrSpace
         this.oamPointer = byte
         // write to ppuReg
-        this.oamData = this.oamAddrSpace.read(byte)
+        const read = this.oamAddrSpace.read(byte)
+        // a hadware bug(?) cause byte2 of sprite cannot be fully read 
+        this.oamData = (byte & 0x0c === 0x02) ? read & 0xe3 : read 
     }
 
     oamDataWrited(byte) {
@@ -157,6 +159,7 @@ class PPU {
         // 获取属性表对应字节 
         const attributeIdx = rowOfAttrBlk * 8 + colomnOfAttrBlk
         const attributeStartAddr = nameTableStartAddr + 960
+        // Todo:// 直接访问VRAM，不通过read方法
         const attribute = this.addrSpace.read(attributeStartAddr + attributeIdx)
         // 获取属性表对应字节对应两位
         const firstBlkRowOfAttrBlk = rowOfAttrBlk * 4
@@ -193,7 +196,13 @@ class PPU {
             }  // for colomn
         }  // for row
         return pixels
-    }  // getBgPixelsByBlk
+    }  
+
+    getBgPixel(row, colomn){
+        // Todo: 
+    }
+
+
 
     render() {
         // draw background
