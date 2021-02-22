@@ -98,7 +98,7 @@ function operateWithLog() {
       `6PPUADDR:${to16pad2(pReg[6])} ` +
       `7PPUDATA:${isNaN(pReg[7]) ? pReg[7] : to16pad2(pReg[7])} ` +
       `14OAMDMA:${to16pad2(pReg[8])} `
-      
+
     )
   } catch (e) {
     console.log(pReg)
@@ -142,11 +142,21 @@ function getRamList() {
     type: "list",
     props: {
       id: "ram",
-      data: getMemWithLino(fc.cpuAddrSpace.ram, 3)
+      data: getMemWithLino(fc.cpuAddrSpace.ram, 3),
+      header: {
+        type: "label",
+        props: {
+          height: 20,
+          text: "RAM",
+          textColor: $color("#AAAAAA"),
+          align: $align.center,
+          font: $font(12)
+        }
+      }
     },
     layout: (make, view) => {
       make.height.equalTo(view.super)
-      make.width.equalTo(100)
+      make.width.equalTo(110)
       make.left.top.equalTo(view.super)
     },
 
@@ -158,7 +168,17 @@ function getVRamNameTableList() {
     type: "list",
     props: {
       id: "vramName",
-      data: getMemWithLino(fc.ppuAddrSpace.nameTable, 4, 0x2000)
+      data: getMemWithLino(fc.ppuAddrSpace.nameTable, 4, 0x2000),
+      header: {
+        type: "label",
+        props: {
+          height: 20,
+          text: "VRAM",
+          textColor: $color("#AAAAAA"),
+          align: $align.center,
+          font: $font(12)
+        }
+      }
     },
     layout: (make, view) => {
       make.height.equalTo(view.super)
@@ -174,13 +194,50 @@ function getVRamvPaletteList() {
     type: "list",
     props: {
       id: "vramPalette",
-      data: getMemWithLino(fc.ppuAddrSpace.palette, 4, 0x3f00)
+      data: getMemWithLino(fc.ppuAddrSpace.palette, 4, 0x3f00),
+      header: {
+        type: "label",
+        props: {
+          height: 20,
+          text: "Palette",
+          textColor: $color("#AAAAAA"),
+          align: $align.center,
+          font: $font(12)
+        }
+      }
     },
     layout: (make, view) => {
       make.height.equalTo(view.super)
       make.width.equalTo(110)
       make.top.equalTo(view.super)
       make.right.equalTo($("vramName").left)
+    },
+
+  }
+}
+
+function getOAMList() {
+  return {
+    type: "list",
+    props: {
+      id: "oam",
+      data: getMemWithLino(fc.oamAddrSpace.mem, 2),
+      header: {
+        type: "label",
+        props: {
+          height: 20,
+          text: "OAM",
+          textColor: $color("#AAAAAA"),
+          align: $align.center,
+          font: $font(12)
+        }
+      }
+    },
+    layout: (make, view) => {
+      make.height.equalTo(view.super)
+      make.width.equalTo(110)
+      make.top.equalTo(view.super)
+      make.left.equalTo($("ram").right)
     },
 
   }
@@ -271,6 +328,7 @@ function getVRamRefreshButton() {
       tapped: function (sender) {
         $("vramName").data = getMemWithLino(fc.ppuAddrSpace.nameTable, 4, 0x2000)
         $("vramPalette").data = getMemWithLino(fc.ppuAddrSpace.palette, 4, 0x3f00)
+        $("oam").data = getMemWithLino(fc.oamAddrSpace.mem, 2)
       }
     },
   }
@@ -455,11 +513,10 @@ function nesTest() {
       title: "Nes Test"
     },
     views: [
-      getRenderCanvas(),
-
       getRamList(),
       getVRamNameTableList(),
       getVRamvPaletteList(),
+      getOAMList(),
 
       getOperateButton(),
       getOperateTimesInput(),
@@ -471,7 +528,8 @@ function nesTest() {
       getSetVBlankButton(),
       getClearVBlankButton(),
 
-      getRenderButton()
+      getRenderButton(),
+      getRenderCanvas()
     ]
   })
 
