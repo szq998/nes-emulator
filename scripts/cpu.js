@@ -1528,9 +1528,9 @@ class CPU {
         break
     }  // switch-case
 
-    this.logger && typeof(opd2) !== "undefined" && this.logger.push(`opd1 ${this.reg.a.toString(16)}`)
-    this.logger && typeof(opd2) !== "undefined" && this.logger.push(`opd2 ${opd2.toString(16)}`)
-    this.logger && typeof(addr) !== "undefined" && this.logger.push(`addr ${addr.toString(16)}`)
+    this.logger && typeof opd2 !== "undefined" && this.logger.push(`opd1 ${this.reg.a.toString(16)}`)
+    this.logger && typeof opd2 !== "undefined" && this.logger.push(`opd2 ${opd2.toString(16)}`)
+    this.logger && typeof addr !== "undefined" && this.logger.push(`addr ${addr.toString(16)}`)
   }  // operate
 
 }  // CPU

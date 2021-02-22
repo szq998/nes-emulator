@@ -178,10 +178,10 @@ class CPUAddrSpace extends AddrSpace {
         const byte = asPart[idx]
 
         // if (!isByte(byte)) throw `NotByteError: read CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte}`
-        const logedByte = typeof (byte) === "undefined" ? -1 : byte
+        const logedByte = isByte(byte) ? byte : -1
         this.logger && this.logger.push(`read CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${logedByte.toString(16).padStart(2, "0")}`)
 
-        return typeof (byte) === "undefined" ? 0 : byte
+        return isByte(byte) ? byte : 0
 
         // return asPart[idx]
     }
@@ -260,10 +260,10 @@ class PPUAddrSpace extends AddrSpace {
             if (!isByte(byte)) throw `NotByteError: read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte}`
             this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
         } else {
-            if (typeof (byte) === "undefined") {
-                this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of undefined`)
-            } else {
+            if (isByte(Byte)) {
                 this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
+            } else {
+                this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte}`)
             }
         }
 
@@ -301,10 +301,10 @@ class OAMAddrSpace extends AddrSpace {
         const byte = this.mem[addr]
 
         if (!isByte(byte)) throw `NotByteError: read OAMAddrSpace ${addr.toString(16).padStart(2, "0")} of ${byte}`
-        const logedByte = typeof (byte) === "undefined" ? -1 : byte
+        const logedByte = isByte(byte) ? byte : -1
         this.logger && this.logger.push(`read OAMAddrSpace ${addr.toString(16).padStart(2, "0")} of ${logedByte.toString(16).padStart(2, "0")}`)
 
-        return typeof (byte) === "undefined" ? 0 : byte
+        return isByte(byte) ? byte : 0
     }
 
     write(addr, byte) {

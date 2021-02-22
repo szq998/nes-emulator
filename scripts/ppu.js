@@ -91,7 +91,7 @@ class PPU {
             // buffer mechanism
             if (this.vramPointer < 0x3f00) {
                 // only get last buffered data
-                this.ppuData = /*typeof(this.bufferedByte) === "undefined" ? 0:*/ this.bufferedByte
+                this.ppuData = /*typeof this.bufferedByte === "undefined" ? 0:*/ this.bufferedByte
                 this.bufferedByte = this.addrSpace.read(this.vramPointer, false)
             } else {
                 // immediate update for palette data
