@@ -79,12 +79,16 @@ function operateWithLog() {
   }
   // record ppu reg
   const ppu = fc.ppu
+  const oamPointer = ppu.oamPointer
+  const vramPointer = ppu.vramPointer
+  const bufferedByte = ppu.bufferedByte
   const pReg = fc.cpuAddrSpace.ppuReg.innerBytes
   try {
     currLogLine.push(
       `ppuAddrStep:${ppu.ppuAddrStep} ` +
-      `vramPointer:${isNaN(ppu.vramPointer) ? ppu.vramPointer : to16pad4(ppu.vramPointer)} ` +
-      `bufferedByte:${isNaN(ppu.bufferedByte) ? ppu.bufferedByte : to16pad2(ppu.bufferedByte)}\n\t` +
+      `oamPointer:${isNaN(oamPointer) ? oamPointer : to16pad2(oamPointer)} ` +
+      `vramPointer:${isNaN(vramPointer) ? vramPointer : to16pad4(vramPointer)} ` +
+      `bufferedByte:${isNaN(bufferedByte) ? bufferedByte : to16pad2(bufferedByte)}\n\t` +
       `0PPUCTRL:${to16pad2(pReg[0])} ` +
       `1PPUMASK:${to16pad2(pReg[1])} ` +
       `2PPUSTATUS:${to16pad2(pReg[2])} ` +
@@ -439,8 +443,9 @@ function getRenderButton() {
   }
 }
 
+// expose to REPL
 test = {
-  log: log
+  fc: fc
 }
 
 
