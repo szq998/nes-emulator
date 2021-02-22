@@ -1,34 +1,64 @@
 const Machine = require("../scripts/machine.js")
 
 const log = []
+let printWhenSaved = []
 const cpuLog = []
 const cpuAddrSpaceLog = []
 const ppuAddrSpaceLog = []
-// let asCPU = new AS.CPUAddrSpace();
-// let rom = game.rom.prg //.concat(game.rom.prg);
-// asCPU.loadRom(rom);
-// let cpu = new CPU(asCPU);
-// cpu.reg.pc = 0xc000;
-const ROMPATH = "./assets/nestest.nes";
+const oamAddrSpaceLog = []
+
+let renderCavOc
+
+// const ROMPATH = "./assets/nestest.nes";
 // const ROMPATH = "./assets/BOMBMAN.NES";
 // const ROMPATH = "./assets/SMB.nes";
+const ROMPATH = "./assets/color_test.nes";
 const romFile = $file.read(ROMPATH);
 const romString = romFile.toString();
 
 const fc = new Machine({
   cpu: cpuLog,
   cpuAddrSpace: cpuAddrSpaceLog,
-  ppuAddrSpace: ppuAddrSpaceLog
+  ppuAddrSpace: ppuAddrSpaceLog,
+  oamAddrSpace: oamAddrSpaceLog
 })
 fc.loadRom(romString)
 console.log(fc.gameRom.header)
+
+function saveLog() {
+  if (log.length === 0) return
+
+  if (!saveLog.dirname) {
+    const romName = ROMPATH.split("/").slice(-1)[0]
+    saveLog.dirname = `log/${romName.toUpperCase()}-${Date()}`
+    $file.mkdir(saveLog.dirname);
+  }
+
+  const filename = `${saveLog.dirname}/${operateWithLog.lino - 1}.log`
+
+  const success = $file.write({
+    data: $data({ string: log.join('\n\n\n') }),
+    path: filename
+  })
+  if (success) {
+    $ui.success(`log appended to /${filename}`)
+    printWhenSaved = log.splice(-1000)
+    log.splice(0)
+  } else {
+    $ui.error("save log failed");
+  }
+}
 
 function operateWithLog() {
   const to16pad4 = num => num.toString(16).toUpperCase().padStart(4, "0")
   const to16pad2 = num => num.toString(16).toUpperCase().padStart(2, "0")
 
-  const currLogLine = []
+  const MAXUNSAVED = 100000
+  if (log.length > MAXUNSAVED) {
+    saveLog()
+  }
 
+  const currLogLine = []
   // record cpu reg
   const cReg = fc.cpu.reg
   const flagByte = fc.cpu.flags2byte()
@@ -62,7 +92,9 @@ function operateWithLog() {
       `4OAMDATA:${to16pad2(pReg[4])} ` +
       `5PPUSCROLL:${to16pad2(pReg[5])} ` +
       `6PPUADDR:${to16pad2(pReg[6])} ` +
-      `7PPUDATA:${isNaN(pReg[7]) ? pReg[7] : to16pad2(pReg[7])} `
+      `7PPUDATA:${isNaN(pReg[7]) ? pReg[7] : to16pad2(pReg[7])} ` +
+      `14OAMDMA:${to16pad2(pReg[8])} `
+      
     )
   } catch (e) {
     console.log(pReg)
@@ -77,6 +109,7 @@ function operateWithLog() {
     currLogLine[0] = "error: \"" + e + "\"\n" + currLogLine[0]
   }
   currLogLine.push(cpuLog.splice(0).join("  "))
+  oamAddrSpaceLog.length && currLogLine.push(oamAddrSpaceLog.splice(0).join("\n\t"))
   ppuAddrSpaceLog.length && currLogLine.push(ppuAddrSpaceLog.splice(0).join("\n\t"))
   cpuAddrSpaceLog.length && currLogLine.push(cpuAddrSpaceLog.splice(0).join("\n\t"))
   log.push(currLogLine.join("\n\n\t"))
@@ -91,7 +124,7 @@ function getMemWithLino(mem, numPad, startLino = 0) {
   for (let i = 0; i < mem.length; i++) {
     const byte = mem[i]
     const lino = (i + startLino).toString(16).padStart(numPad, "0")
-    if (typeof (byte) === "undefined") {
+    if (typeof byte === "undefined") {
       linoed.push(`${lino}:`)
     } else {
       linoed.push(`${lino}: ${byte.toString(16).padStart(2, "0")}`)
@@ -159,7 +192,7 @@ function getOperateButton() {
     layout: (make, view) => {
       make.size.equalTo($size(110, 40))
       make.centerX.equalTo(view.super)
-      make.centerY.equalTo(view.super).offset(-100)
+      make.centerY.equalTo(view.super).offset(100)
     },
     events: {
       tapped: function (sender) {
@@ -286,9 +319,15 @@ function getPrintLogButton() {
     },
     events: {
       tapped: (sender) => {
-        if (log.length === 0) return
-        // console.log(log.slice(sender.info[0], sender.info[1] || undefined).join("\n"))
-        for (const line of log.slice(sender.info[0], sender.info[1] || undefined)) {
+        let forPrint
+        if (log.length < 1000) {
+          forPrint = printWhenSaved.concat(log)
+        } else {
+          forPrint = log
+        }
+
+        if (forPrint.length === 0) return
+        for (const line of forPrint.slice(sender.info[0], sender.info[1] || undefined)) {
           console.log(line)
         }
       }
@@ -309,22 +348,7 @@ function getSaveLogButton() {
       make.top.equalTo($("vramRef").bottom).offset(30)
     },
     events: {
-      tapped: function (sender) {
-        $input.text({
-          text: "test-log.txt",
-          handler: function (text) {
-            const success = $file.write({
-              data: $data({ string: log.join('\n\n\n') }),
-              path: text
-            })
-            if (success) {
-              $ui.success(`log saved to /${text}`)
-            } else {
-              $ui.error("save log failed");
-            }
-          }
-        })
-      }
+      tapped: saveLog
     }
   }
 }
@@ -374,23 +398,20 @@ function getRenderCanvas() {
     type: "canvas",
     props: {
       id: "renderCavs",
-
     },
     layout: (make, view) => {
-      make.size.equalTo($size(500, 500))
+      make.size.equalTo($size(256, 240))
       make.centerX.equalTo(view.super)
       make.top.equalTo(view.super)
     },
     events: {
+      ready: sender => {
+        sender.scale(2.5)
+        renderCavOc = sender.ocValue()
+      },
       draw: (view, ctx) => {
-        test.cav = view
-        test.ctx = ctx
-        test.bmp = fc.bitmap
-
         const img = $image($data({ byteArray: fc.bitmap.bmp }))
         ctx.drawImage($rect(0, 0, fc.bitmap.width, fc.bitmap.height), img)
-
-        test.img = img
       }
     }
   }
@@ -410,18 +431,18 @@ function getRenderButton() {
     },
     events: {
       tapped: function (sender) {
-        // test.p = []
-        // fc.drawCallback.drawBgBlock = (r, c, pixels) => {
-        //   test.p.push([r, c, pixels])
-        // }
         fc.ppu.render()
-        $("renderCavs").ocValue().$setNeedsDisplay()
+        // $("renderCavs").ocValue().$setNeedsDisplay()
+        renderCavOc.$setNeedsDisplay()
       }
     },
   }
 }
 
-test = {}
+test = {
+  log: log
+}
+
 
 function nesTest() {
   $ui.render({
@@ -429,7 +450,6 @@ function nesTest() {
       title: "Nes Test"
     },
     views: [
-      // getRenderCanvas({ width:300, height:300,bmp: $data({ path: "assets/testbmp.bmp" }) }),
       getRenderCanvas(),
 
       getRamList(),

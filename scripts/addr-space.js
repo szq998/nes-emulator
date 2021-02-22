@@ -12,13 +12,13 @@ const isByte = mayByte => {
     return Number.isInteger(mayByte) && !(mayByte >> 8)
 }
 
-const isValidAddress = mayAddr => {
-    return Number.isInteger(mayAddr) && !(mayAddr >> 16)
+const isValidAddress = (mayAddr, maxBits = 16) => {
+    return Number.isInteger(mayAddr) && !(mayAddr >> maxBits)
 }
 
 class PPUReg {
     constructor() {
-        this.innerBytes = [0, 0, 0, 0, 0, 0, 0, 0]
+        this.innerBytes = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         this.regReadCallbacks = []
         this.regWritedCallbacks = []
     }
@@ -80,6 +80,12 @@ class PPUReg {
         this.innerBytes[7] = byte
         this.regWritedCallbacks[7] && this.regWritedCallbacks[7](byte)
     }
+
+    get 14() { throw "WriteOnlyError" }
+    set 14(byte) {
+        this.innerBytes[8] = byte
+        this.regWritedCallbacks[8] && this.regWritedCallbacks[8](byte)
+    }
 }
 
 class CPUAddrSpace extends AddrSpace {
@@ -102,6 +108,35 @@ class CPUAddrSpace extends AddrSpace {
         }
     }
 
+    get DMAPort() { return this.DMA.bind(this) }
+
+    DMA(addr) {
+        if (addr < 0x1f) {
+            // ram
+            const start = (addr & 0x07) << 8
+            const end = start + 0x0100
+            return this.ram.slice(start, end)
+        } else if (addr >= 0x41 && addr < 0x60) {
+            // expansion rom
+            throw "Unimplemented DMA address."
+        } else if (addr < 0x80) {
+            // save ram
+            throw "Unimplemented DMA address."
+        } else if (addr < 0xc0) {
+            // rom 0
+            const start = (addr & 0x3f) << 8
+            const end = start + 0x0100
+            this.roms[0].slice(start, end) 
+        } else if (addr < 0xff) {
+            // rom 1
+            const start = (addr & 0x3f) << 8
+            const end = start + 0x0100
+            this.roms[1].slice(start, end) 
+        } else {
+            throw "Unsupported DMA address."
+        }
+    }
+
     addressing(addr) {
         if (!isValidAddress(addr)) {
             throw `InvalidAddressError: ${addr} is't a valid address.`
@@ -116,8 +151,10 @@ class CPUAddrSpace extends AddrSpace {
             return [this.ram, addr & 0x07ff]
         } else if (addr < 0x4000) {
             // ppu register 0x2008-0x3fff
-            // console.log(`ppuReg ${addr & 0x0007} accessed`)
             return [this.ppuReg, addr & 0x0007]
+        } else if (addr === 0x4014) {
+            // special OAM DMA reg, combine to ppu reg addr 14 for simplicity
+            return [this.ppuReg, 14]
         } else if (addr < 0x4020) {
             // register 0x4000-0x401f
             return [[0], 0]
@@ -141,10 +178,10 @@ class CPUAddrSpace extends AddrSpace {
         const byte = asPart[idx]
 
         // if (!isByte(byte)) throw `NotByteError: read CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte}`
-        const logedByte = typeof(byte) === "undefined" ? -1 : byte
+        const logedByte = typeof (byte) === "undefined" ? -1 : byte
         this.logger && this.logger.push(`read CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${logedByte.toString(16).padStart(2, "0")}`)
 
-        return typeof(byte) === "undefined" ? 0 : byte
+        return typeof (byte) === "undefined" ? 0 : byte
 
         // return asPart[idx]
     }
@@ -198,23 +235,6 @@ class PPUAddrSpace extends AddrSpace {
         } else if (addr < 0x3f00) {
             // addr &= 0x2fff  // mirror 0x3000-3eff to 0x2000-2eff
             return [this.nameTable, addr & (this.isFourScreen ? 0x0fff : 0x07ff)]
-            // if (addr < 0x23c0) {
-            //     // name table 0 0x2000-0x23bf
-            // } else if (addr < 0x2400) {
-            //     // attribute table 0 0x23c0-0x23ff
-            // } else if (addr < 0x27c0) {
-            //     // name table 1 0x2400-0x27bf
-            // } else if (addr < 0x2800) {
-            //     // addribute table 1 0x27c0-0x27ff
-            // } else if (addr < 0x2bc0) {
-            //     // name table 2 0x2800-0x2bbf
-            // } else if (addr < 0x2c00) {
-            //     // attribute table 2 0x2bc0-0x2bff
-            // } else if (addr < 0x2fc0) {
-            //     // name table 3 0x2c00-0x2fbf
-            // } else if (addr < 0x2fc0) {
-            //     // addribute table 3 0x2fc0-0x2fff
-            // }
         } else {
             // addr &= 0x3f1f  // mirror 0x3f20-0x3fff to 0x03f00-0x3f1f
 
@@ -267,10 +287,58 @@ class PPUAddrSpace extends AddrSpace {
     }  // write 
 }
 
+class OAMAddrSpace extends AddrSpace {
+    constructor(DMAPort, logger = null) {
+        super(logger)
+        this.DMAPort = DMAPort
+        this.mem = Array(256)
+    }
 
+    read(addr) {
+        if (!isValidAddress(addr, 8)) {
+            throw `InvalidAddressError: ${addr} is't a valid OAM address.`
+        }
+        const byte = this.mem[addr]
+
+        if (!isByte(byte)) throw `NotByteError: read OAMAddrSpace ${addr.toString(16).padStart(2, "0")} of ${byte}`
+        const logedByte = typeof (byte) === "undefined" ? -1 : byte
+        this.logger && this.logger.push(`read OAMAddrSpace ${addr.toString(16).padStart(2, "0")} of ${logedByte.toString(16).padStart(2, "0")}`)
+
+        return typeof (byte) === "undefined" ? 0 : byte
+    }
+
+    write(addr, byte) {
+        if (!isValidAddress(addr, 8)) {
+            throw `InvalidAddressError: ${addr} is't a valid OAM address.`
+        }
+
+        if (!isByte(byte)) {
+            throw `NotByteError: attempt to write ${byte} to OAMAddrSpace at ${addr.toString(16).padStart(2, "0")}.`
+        }
+        this.logger && this.logger.push(`write OAMAddrSpace ${addr.toString(16).padStart(2, "0")} of ${byte.toString(16).padStart(2, "0")}`)
+
+        this.mem[addr] = byte
+    }
+
+    DMA(addr) {
+        if (!isValidAddress(addr, 8)) {
+            throw `InvalidAddressError: ${addr} is't a valid DMA address.`
+        }
+        const DMABytes = this.DMAPort(addr)
+        for (let i = 0; i < DMABytes.length; i++) {
+            const byte = DMABytes[i]
+            if (!isByte(DMABytes[i])) throw `NoByteError: get ${byte} at ${addr.toString(16).padStart(2, "0")}${i.toString(16).padStart(2, "0")} from DMA`
+        }
+
+        this.logger && this.logger.push(`DMA by OAMAddrSpace at ${addr.toString(16).padStart(2, "0")}`)
+
+        this.mem = DMABytes
+    }
+}
 
 
 module.exports = {
     CPUAddrSpace: CPUAddrSpace,
-    PPUAddrSpace: PPUAddrSpace
+    PPUAddrSpace: PPUAddrSpace,
+    OAMAddrSpace: OAMAddrSpace
 }

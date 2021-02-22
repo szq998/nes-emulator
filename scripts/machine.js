@@ -1,5 +1,5 @@
 const GameRom = require("./game-rom.js")
-const { CPUAddrSpace, PPUAddrSpace } = require("./addr-space.js")
+const { CPUAddrSpace, PPUAddrSpace, OAMAddrSpace } = require("./addr-space.js")
 const CPU = require("./cpu.js")
 const PPU = require("./ppu.js")
 const BitMap8Bit = require("./bitmap.js")
@@ -36,8 +36,9 @@ class Machine {
 
     this.cpuAddrSpace = new CPUAddrSpace(logger && logger.cpuAddrSpace)
     this.ppuAddrSpace = new PPUAddrSpace(logger && logger.ppuAddrSpace)
+    this.oamAddrSpace = new OAMAddrSpace(this .cpuAddrSpace.DMAPort, logger && logger.oamAddrSpace)
     this.cpu = new CPU(this.cpuAddrSpace, logger && logger.cpu)
-    this.ppu = new PPU(this.ppuAddrSpace, this.cpuAddrSpace.ppuReg, this.drawCallback)
+    this.ppu = new PPU(this.ppuAddrSpace, this.oamAddrSpace, this.cpuAddrSpace.ppuReg, this.drawCallback)
 
     this.gameRom
     this.gameLoaded = false

@@ -23,11 +23,12 @@
 
 
 class PPU {
-    constructor(addrSpace, ppuReg, drawCallback) {
+    constructor(addrSpace, oamAddrSpace, ppuReg, drawCallback) {
         this.addrSpace = addrSpace // a.k.a vram
+        this.oamAddrSpace = oamAddrSpace
         this.ppuReg = ppuReg
         this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead.bind(this), null, null, null, null, this.ppuDataRead.bind(this)]
-        this.ppuReg.regWritedCallbacks = [null, null, null, null, null, null, this.ppuAddrWrited.bind(this), this.ppuDataWrited.bind(this)]
+        this.ppuReg.regWritedCallbacks = [null, null, null, null, null, null, this.ppuAddrWrited.bind(this), this.ppuDataWrited.bind(this), this.oamDMAWrited.bind(this)]
 
         this.drawCallback = drawCallback
 
@@ -106,6 +107,11 @@ class PPU {
         // increase ppuAddr
         this.vramPointer += (this.ppuCtrl & PPU.VRAM_ADDR_INCR ? 32 : 1)
     }
+
+    oamDMAWrited(byte) {
+        this.oamAddrSpace.DMA(byte)
+    }
+
     // render methods
     // every 8x8 background pixels
     setVBlank(callBack) {
