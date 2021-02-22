@@ -1,6 +1,5 @@
 const Machine = require("../scripts/machine.js")
 
-
 const log = []
 const cpuLog = []
 const cpuAddrSpaceLog = []
@@ -12,6 +11,7 @@ const ppuAddrSpaceLog = []
 // cpu.reg.pc = 0xc000;
 const ROMPATH = "./assets/nestest.nes";
 // const ROMPATH = "./assets/BOMBMAN.NES";
+// const ROMPATH = "./assets/SMB.nes";
 const romFile = $file.read(ROMPATH);
 const romString = romFile.toString();
 
@@ -281,8 +281,8 @@ function getPrintLogButton() {
     },
     layout: (make, view) => {
       make.size.equalTo($size(110, 40))
-      make.top.equalTo($("vramRef"))
-      make.left.equalTo($("vramRef").right).offset(20)
+      make.top.equalTo($("saveLog"))
+      make.left.equalTo($("saveLog").right).offset(20)
     },
     events: {
       tapped: (sender) => {
@@ -369,12 +369,69 @@ function getClearVBlankButton() {
   }
 }
 
+function getRenderCanvas() {
+  return {
+    type: "canvas",
+    props: {
+      id: "renderCavs",
+
+    },
+    layout: (make, view) => {
+      make.size.equalTo($size(500, 500))
+      make.centerX.equalTo(view.super)
+      make.top.equalTo(view.super)
+    },
+    events: {
+      draw: (view, ctx) => {
+        test.cav = view
+        test.ctx = ctx
+        test.bmp = fc.bitmap
+
+        const img = $image($data({ byteArray: fc.bitmap.bmp }))
+        ctx.drawImage($rect(0, 0, fc.bitmap.width, fc.bitmap.height), img)
+
+        test.img = img
+      }
+    }
+  }
+}
+
+function getRenderButton() {
+  return {
+    type: "button",
+    props: {
+      id: "renderBtn",
+      title: "render"
+    },
+    layout: (make, view) => {
+      make.size.equalTo($size(110, 40))
+      make.top.equalTo($("vramRef"))
+      make.left.equalTo($("vramRef").right).offset(20)
+    },
+    events: {
+      tapped: function (sender) {
+        // test.p = []
+        // fc.drawCallback.drawBgBlock = (r, c, pixels) => {
+        //   test.p.push([r, c, pixels])
+        // }
+        fc.ppu.render()
+        $("renderCavs").ocValue().$setNeedsDisplay()
+      }
+    },
+  }
+}
+
+test = {}
+
 function nesTest() {
   $ui.render({
     props: {
       title: "Nes Test"
     },
     views: [
+      // getRenderCanvas({ width:300, height:300,bmp: $data({ path: "assets/testbmp.bmp" }) }),
+      getRenderCanvas(),
+
       getRamList(),
       getVRamNameTableList(),
       getVRamvPaletteList(),
@@ -383,11 +440,13 @@ function nesTest() {
       getOperateTimesInput(),
       getRamRefreshButton(),
       getVRamRefreshButton(),
-      getPrintLogButton(),
       getSaveLogButton(),
+      getPrintLogButton(),
 
       getSetVBlankButton(),
       getClearVBlankButton(),
+
+      getRenderButton()
     ]
   })
 
