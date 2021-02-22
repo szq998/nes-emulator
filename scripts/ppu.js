@@ -27,11 +27,13 @@ class PPU {
         this.addrSpace = addrSpace // a.k.a vram
         this.oamAddrSpace = oamAddrSpace
         this.ppuReg = ppuReg
-        this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead.bind(this), null, null, null, null, this.ppuDataRead.bind(this)]
-        this.ppuReg.regWritedCallbacks = [null, null, null, null, null, null, this.ppuAddrWrited.bind(this), this.ppuDataWrited.bind(this), this.oamDMAWrited.bind(this)]
+        this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead.bind(this), null, this.oamDataRead.bind(this), null, null, this.ppuDataRead.bind(this)]
+        this.ppuReg.regWritedCallbacks = [null, null, null, this.oamAddrWrited.bind(this), this.oamDataWrited.bind(this), null, this.ppuAddrWrited.bind(this), this.ppuDataWrited.bind(this), this.oamDMAWrited.bind(this)]
 
         this.drawCallback = drawCallback
 
+        // pointer from oamAddr
+        this.oamPointer
         // pointer from ppuAddr
         this.vramPointer
         this.ppuAddrStep = 0
@@ -64,6 +66,8 @@ class PPU {
     get ppuData() { return this.ppuReg.innerBytes[7] }
     set ppuData(byte) { this.ppuReg.innerBytes[7] = byte }
 
+    get oamDMA() { return this.ppuReg.innerBytes[8] }
+    set oamDMA(byte) { this.ppuReg.innerBytes[8] = byte }
     /*Todo: OAMDMA*/
 
     // callbacks when ppuReg read
@@ -72,12 +76,30 @@ class PPU {
         this.clearVBlank()
     }
 
+    oamDataRead(byte) {
+        // increase oamAddr
+        this.oamPointer = (this.oamPointer + 1) & 0xff
+    }
+
     ppuDataRead(byte) {
         // increase ppuAddr
         this.vramPointer += (this.ppuCtrl & PPU.VRAM_ADDR_INCR ? 32 : 1)
     }
 
     // callbacks when ppuReg writed
+    oamAddrWrited(byte) {
+        // write to oamAddrSpace
+        this.oamPointer = byte
+        // write to ppuReg
+        this.oamData = this.oamAddrSpace.read(byte)
+    }
+
+    oamDataWrited(byte) {
+        this.oamAddrSpace.write(this.oamPointer, byte)
+        // increase oamAddr
+        this.oamPointer = (this.oamPointer + 1) & 0xff
+    }
+
     ppuAddrWrited(byte) {
         if (this.ppuAddrStep == 0) {
             // 6 higher bits
