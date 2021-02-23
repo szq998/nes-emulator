@@ -286,7 +286,7 @@ class PPU {
                     const currRow = new Uint8Array(pixels.buffer, i * 8, 8)
                     currRow.reverse()
                 }
-                retur
+                return
             case 0: // none
                 return
         }
