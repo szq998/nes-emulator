@@ -205,18 +205,21 @@ class PPU {
 
     getSprite8Pixel(pIdx, palHigh, patternTableStartAddr) {
         // low 2 bits of palette idx
-        const patternLowStartAddr = patternTableStartAddr + 16 * pIdx 
+        const patternLowStartAddr = patternTableStartAddr + 16 * pIdx
         const patternHighStartAddr = patternTableStartAddr + 16 * pIdx + 8
 
         const spPaletteStartAddr = 0x3f10
         const pixels = new Uint8Array(8 * 8)
         for (let row = 0; row < 8; row++) {
             const lowPatternByte = this.addrSpace.read(patternLowStartAddr + row)
-            const highPatternByte = this.addrSpace.read(patternHighStartAddr + row)
+            const highPatternByte = this.addrSpace.read(patternHighStartAddr + row) << 1
             for (let colomn = 7; colomn >= 0; colomn--) {
                 const idxBit0 = (lowPatternByte >> colomn) & 1
-                const idxBit1 = (highPatternByte >> (colomn - 1)) & 2
-                const paletteIdx = (idxBit1 & idxBit0) ? (paletteIdxFromAttr | idxBit1 | idxBit0) : 0
+                const idxBit1 = (highPatternByte >> colomn) & 2
+                const palLow = idxBit1 | idxBit0
+                // whether transprant or not
+                // Todo: transprant support
+                const paletteIdx = palLow ? (palHigh | palLow) : 0
 
                 const palColor = this.addrSpace.read(spPaletteStartAddr + paletteIdx)
                 pixels[row * 8 + (7 - colomn)] = palColor
@@ -224,6 +227,7 @@ class PPU {
                 // pixels.push(rgbaColor)
             }  // for colomn
         }  // for row
+        return pixels
     }
 
     getSprite16Pixel(pIdx, palHigh) {
@@ -243,11 +247,10 @@ class PPU {
                 this.drawCallback.drawBgBlock(row * 8, colomn * 8, 8, 8, pixels)
             }
         }
-        return
         // draw sprite
         // Todo: 
         const patternTableStartAddr = this.ppuCtrl & PPU.SP_PATTERN_TABLE ? 0x1000 : 0x0000
-        const isHeight8 = this.ppuCtrl & PPU.SP_HEIGHT  // determine sprite's height
+        const isHeight16 = this.ppuCtrl & PPU.SP_HEIGHT  // determine sprite's height
         const oam = this.oamAddrSpace.mem  // direct access or performance
         for (let i = 0xfc /* from back to front */; i >= 0; i -= 4) {
             // skip sprites out of boundary or under background
@@ -258,21 +261,22 @@ class PPU {
             const palHigh = oam[i + 2] & 0x03
 
             let pixels
-            if (isHeight8) {
+            if (!isHeight16) {
                 pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr)
+                // console.log(pixels)
 
-                if (vFliped || hFliped) {
-                    this.sprite8Flip()
-                }
+                // if (vFliped || hFliped) {
+                //     this.sprite8Flip()
+                // }
 
                 this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 8, pixels)
             } else {
-                pixels = this.getSprite16Pixel(pIdx, palHigh)
-                if (vFliped || hFliped) {
-                    this.sprite16Flip()
-                }
+                // pixels = this.getSprite16Pixel(pIdx, palHigh)
+                // if (vFliped || hFliped) {
+                //     this.sprite16Flip()
+                // }
 
-                this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 16, pixels)
+                // this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 16, pixels)
             }
         }
 
