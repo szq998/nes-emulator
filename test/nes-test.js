@@ -283,6 +283,10 @@ function getOperateButton() {
 
         if (!num) num = 1
 
+        if ($("autoVB").on) {
+          fc.setVBlank()
+        }
+
         if (logger.cpu.doLog) {
           while (num--) {
             operateWithLog()
@@ -555,6 +559,20 @@ function getClearVBlankButton() {
   }
 }
 
+function getVBlankToggle() {
+  return {
+    type: "switch",
+    props: {
+      id: "autoVB",
+      on: true
+    },
+    layout: (make, view) => {
+      make.centerY.equalTo($("setVB"))
+      make.left.equalTo($("setVB").right).offset(20)
+    }
+  }
+}
+
 function getRenderCanvas() {
   return {
     type: "canvas",
@@ -640,6 +658,7 @@ function nesTest() {
 
       getSetVBlankButton(),
       getClearVBlankButton(),
+      getVBlankToggle(),
 
       getRenderButton(),
       getRenderCanvas(),
