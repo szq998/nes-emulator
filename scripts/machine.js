@@ -42,6 +42,9 @@ class Machine {
     this.cpu = new CPU(this.cpuAddrSpace, logger && logger.cpu)
     this.ppu = new PPU(this.ppuAddrSpace, this.oamAddrSpace, this.cpuAddrSpace.ppuReg, this.drawCallback)
 
+    this.controllerPressed = this.cpuAddrSpace.controller.controllerPressed.bind(this.cpuAddrSpace.controller)
+    this.controllerReleased = this.cpuAddrSpace.controller.controllerReleased.bind(this.cpuAddrSpace.controller)
+
     this.gameRom
     this.gameLoaded = false
 

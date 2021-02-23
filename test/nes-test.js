@@ -44,7 +44,7 @@ function saveLog() {
   if (log.length === 0) return
 
   if (!saveLog.dirname) {
-    const romName = $("romPicker")[0]
+    const romName = $("romPicker").data[0]
     saveLog.dirname = `log/${romName.toUpperCase()}-${Date()}`
     $file.mkdir(saveLog.dirname);
   }
@@ -601,6 +601,20 @@ function getRenderButton() {
   }
 }
 
+function getKey(name, layout) {
+  return {
+    type: "button",
+    props: {
+      id: `${name}Key`,
+      title: name.toUpperCase()
+    },
+    layout: layout,
+    events: {
+      touchesBegan: () => fc.controllerPressed(0, name),
+      touchesEnded: () => fc.controllerReleased(0, name)
+    }
+  }
+}
 
 function nesTest() {
   $ui.render({
@@ -628,7 +642,48 @@ function nesTest() {
       getClearVBlankButton(),
 
       getRenderButton(),
-      getRenderCanvas()
+      getRenderCanvas(),
+
+      getKey("right", (make, view) => {
+        make.size.equalTo($size(80, 50))
+        make.right.equalTo($("renderCavs").left).offset(-64 - 10)
+        make.bottom.equalTo($("renderCavs")).offset(60 - 15)
+      }),
+      getKey("up", (make, view) => {
+        make.size.equalTo(view.prev)
+        make.right.equalTo(view.prev.left)
+        make.bottom.equalTo(view.prev.top)
+      }),
+      getKey("down", (make, view) => {
+        make.size.equalTo(view.prev)
+        make.right.equalTo(view.prev)
+        make.top.equalTo(view.prev.prev.bottom)
+      }),
+      getKey("left", (make, view) => {
+        make.size.equalTo(view.prev)
+        make.right.equalTo(view.prev.left)
+        make.bottom.equalTo(view.prev.top)
+      }),
+      getKey("select", (make, view) => {
+        make.size.equalTo(view.prev)
+        make.top.equalTo($("renderCavs").bottom).offset(60 + 10)
+        make.centerX.equalTo(view.super).offset(-50)
+      }),
+      getKey("start", (make, view) => {
+        make.size.equalTo(view.prev)
+        make.top.equalTo(view.prev)
+        make.centerX.equalTo(view.super).offset(50)
+      }),
+      getKey("a", (make, view) => {
+        make.size.equalTo(view.prev)
+        make.left.equalTo($("renderCavs").right).offset(64 + 10)
+        make.centerY.equalTo($("rightKey")).offset(-30)
+      }),
+      getKey("b", (make, view) => {
+        make.size.equalTo(view.prev)
+        make.left.equalTo(view.prev)
+        make.centerY.equalTo($("rightKey")).offset(30)
+      })
     ]
   })
 

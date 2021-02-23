@@ -88,11 +88,114 @@ class PPUReg {
     }
 }
 
+class Controller {
+    constructor() {
+        this.strobed = false
+        this.buttons = Array(16)
+        this.buttonIdx = [0, 0]
+    }
+
+    get 0() {
+        if (!this.strobed) return 
+        const v = this.buttons[this.buttonIdx[0]]
+        this.buttonIdx[0]++
+        this.buttonIdx[0] = this.buttonIdx[0] & 0x7
+        return v
+    }
+
+    set 0(byte) {
+        if (byte & 1) {
+            // reset
+            this.buttonIdx = [0, 0]
+            this.strobed = false
+        } else {
+            this.strobed = 1
+        }
+    }
+
+    get 1() {
+        if (!this.strobed) return
+        const v = this.buttons[this.buttonIdx[1] + 8]
+        this.buttonIdx[1]++
+        this.buttonIdx[1] = this.buttonIdx[1] & 0x7
+        return v
+    }
+
+    set 1(byte) {
+        console.log("write 4017")
+    }
+
+    controllerPressed(controller, key) {
+        const offset = controller === 0 ? 0 : 8
+        switch(key) {
+            case "a": 
+                this.buttons[0 + offset] = 1
+                break
+            case "b": 
+                this.buttons[1 + offset] = 1
+                break
+            case "select": 
+                this.buttons[2 + offset] = 1
+                break
+            case "start": 
+                this.buttons[3 + offset] = 1
+                break
+            case "up": 
+                this.buttons[4 + offset] = 1
+                break
+            case "down": 
+                this.buttons[5 + offset] = 1
+                break
+            case "left": 
+                this.buttons[6 + offset] = 1
+                break
+            case "right": 
+                this.buttons[7 + offset] = 1
+                break
+            default:
+                throw `attempt to press unknown controller key ${key}`
+        }
+    }
+
+    controllerReleased(controller, key) {
+        const offset = controller === 0 ? 0 : 8
+        switch(key) {
+            case "a": 
+                this.buttons[0 + offset] = 0
+                break
+            case "b": 
+                this.buttons[1 + offset] = 0
+                break
+            case "select": 
+                this.buttons[2 + offset] = 0
+                break
+            case "start": 
+                this.buttons[3 + offset] = 0
+                break
+            case "up": 
+                this.buttons[4 + offset] = 0
+                break
+            case "down": 
+                this.buttons[5 + offset] = 0
+                break
+            case "left": 
+                this.buttons[6 + offset] = 0
+                break
+            case "right": 
+                this.buttons[7 + offset] = 0
+                break
+            default:
+                throw `attempt to release unknown controller key ${key}`
+        }
+    }
+}
+
 class CPUAddrSpace extends AddrSpace {
     constructor(logger = null) {
         super(logger)
         this.ram = Array(0x07ff)
         this.ppuReg = new PPUReg()
+        this.controller = new Controller()
         this.roms = Array(2)
     }
 
@@ -126,12 +229,12 @@ class CPUAddrSpace extends AddrSpace {
             // rom 0
             const start = (addr & 0x3f) << 8
             const end = start + 0x0100
-            this.roms[0].slice(start, end) 
+            this.roms[0].slice(start, end)
         } else if (addr < 0xff) {
             // rom 1
             const start = (addr & 0x3f) << 8
             const end = start + 0x0100
-            this.roms[1].slice(start, end) 
+            this.roms[1].slice(start, end)
         } else {
             throw "Unsupported DMA address."
         }
@@ -155,6 +258,9 @@ class CPUAddrSpace extends AddrSpace {
         } else if (addr === 0x4014) {
             // special OAM DMA reg, combine to ppu reg addr 14 for simplicity
             return [this.ppuReg, 14]
+        } else if (addr === 0x4016 || addr === 0x4017) {
+            // controller 
+            return [this.controller, addr & 1]
         } else if (addr < 0x4020) {
             // register 0x4000-0x401f
             return [[0], 0]
@@ -218,7 +324,7 @@ class PPUAddrSpace extends AddrSpace {
             this.isChrRam = true
         } else if (rom.length === 0x2000) {
             this.patternTable = rom.slice()
-            this.isChrRam = false 
+            this.isChrRam = false
         } else {
             throw `Illegal CHR-ROM length ${rom.length.toString(16)}.`
         }
