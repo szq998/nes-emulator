@@ -68,6 +68,7 @@ class BitMap8Bit {
         const bfSize = bfOffBits + biSizeImage
 
         this.data = new Uint8Array(bfSize)
+        this.pixels = new Uint8Array(this.data.buffer, bfOffBits)
         this.dataView = new DataView(this.data.buffer)
         // set Header 
         this.setHeaderValue(0x4d42, ...header.bfType)

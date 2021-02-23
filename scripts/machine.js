@@ -31,7 +31,9 @@ class Machine {
   constructor(logger = null) {
     this.bitmap = new BitMap8Bit(256, 240, fcColorPalette)
     this.drawCallback = {
-      drawBgBlock: this.bitmap.setPixelBlock.bind(this.bitmap)
+      drawBgBlock: this.bitmap.setPixelBlock.bind(this.bitmap),
+      pixels: this.bitmap.pixels,
+      bmpWidth: this.bitmap.widthWithPad
     }
 
     this.cpuAddrSpace = new CPUAddrSpace(logger && logger.cpuAddrSpace)

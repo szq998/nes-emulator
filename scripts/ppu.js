@@ -191,8 +191,7 @@ class PPU {
                 // whether universal background or not
                 const paletteIdx = paletteIdxFromPatt ? (paletteIdxFromAttr | paletteIdxFromPatt) : 0
 
-                const palColor = this.addrSpace.read(bgPaletteStartAddr + paletteIdx)
-                pixels[pixelIdx++] = palColor
+                pixels[pixelIdx++] = this.addrSpace.read(bgPaletteStartAddr + paletteIdx)
                 // const rgbaColor = plaColor2RGBAColor[palColor]
                 // pixels.push(rgbaColor)
             }  // for colomn
@@ -204,7 +203,7 @@ class PPU {
         // Todo: 
     }
 
-    getSprite8Pixel(pIdx, palHigh, patternTableStartAddr) {
+    getSprite8Pixel(pIdx, palHigh, patternTableStartAddr, keepIntact) {
         // low 2 bits of palette idx
         const patternLowStartAddr = patternTableStartAddr + 16 * pIdx
         const patternHighStartAddr = patternLowStartAddr + 8
@@ -220,17 +219,19 @@ class PPU {
                 const idxBit1 = (highPatternByte >> colomn) & 2
                 const palLow = idxBit1 | idxBit0
                 // whether transprant or not
-                // Todo: transprant support
-                const paletteIdx = palLow ? (palHigh | palLow) : 0
-
-                const palColor = this.addrSpace.read(spPaletteStartAddr + paletteIdx)
-                pixels[pixelIdx++] = palColor
+                if (palLow) {
+                    const paletteIdx = palHigh | palLow
+                    pixels[pixelIdx++] = this.addrSpace.read(spPaletteStartAddr + paletteIdx)
+                } else {
+                    const { startPoint, bmpWidth } = keepIntact
+                    pixels[pixelIdx++] = keepIntact.pixels[startPoint + row * bmpWidth + (7 - colomn)]
+                }
             }  // for colomn
         }  // for row
         return pixels
     }
 
-    getSprite16Pixel(pIdx, palHigh) {
+    getSprite16Pixel(pIdx, palHigh, keepIntact) {
         // pattern table determined by bit0 of pIdx
         const patternTableStartAddr = pIdx & 1 ? 0x1000 : 0x0000
         // bit0 now become useless
@@ -255,11 +256,13 @@ class PPU {
                     const idxBit1 = (highPatternByte >> colomn) & 2
                     const palLow = idxBit1 | idxBit0
                     // whether transprant or not
-                    // Todo: transprant support
-                    const paletteIdx = palLow ? (palHigh | palLow) : 0
-
-                    const palColor = this.addrSpace.read(spPaletteStartAddr + paletteIdx)
-                    pixels[pixelIdx++] = palColor
+                    if (palLow) {
+                        const paletteIdx = palHigh | palLow
+                        pixels[pixelIdx++] = this.addrSpace.read(spPaletteStartAddr + paletteIdx)
+                    } else {
+                        const { startPoint, bmpWidth } = keepIntact
+                        pixels[pixelIdx++] = keepIntact.pixels[startPoint + (row + part * 8) * bmpWidth + (7 - colomn)]
+                    }
                 }  // for colomn
             }  // for row
         } // for part
@@ -315,16 +318,25 @@ class PPU {
                 const pIdx = oam[i + 1]
                 const palHigh = oam[i + 2] & 0x03
 
+                const row = oam[i + 0] + 1
+                const colomn = oam[i + 3]
+
+                const keepIntact = {
+                    pixels: this.drawCallback.pixels,
+                    bmpWidth: this.drawCallback.bmpWidth,
+                    startPoint: row * this.drawCallback.bmpWidth + colomn
+                }
+
                 let pixels
                 try {
                     if (!isHeight16) {
-                        pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr)
+                        pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr, keepIntact)
                         flipped && this.spriteFlip(flipped >> 6, pixels, 8)
-                        this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 8, pixels)
+                        this.drawCallback.drawBgBlock(row, colomn, 8, 8, pixels)
                     } else {
-                        pixels = this.getSprite16Pixel(pIdx, palHigh)
+                        pixels = this.getSprite16Pixel(pIdx, palHigh, keepIntact)
                         flipped && this.spriteFlip(flipped >> 6, pixels, 16)
-                        this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 16, pixels)
+                        this.drawCallback.drawBgBlock(row, colomn, 8, 16, pixels)
                     }
                 } catch (e) {
                     // catch range error
