@@ -464,11 +464,11 @@ function getRenderCanvas() {
     layout: (make, view) => {
       make.size.equalTo($size(256, 240))
       make.centerX.equalTo(view.super)
-      make.top.equalTo(view.super)
+      make.top.equalTo(view.super).offset(60)
     },
     events: {
       ready: sender => {
-        sender.scale(2.5)
+        sender.scale(1.5)
         renderCavOc = sender.ocValue()
       },
       draw: (view, ctx) => {
