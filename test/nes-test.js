@@ -11,17 +11,18 @@ let renderCavOc
 
 // const ROMPATH = "./assets/nestest.nes";
 // const ROMPATH = "./assets/BOMBMAN.NES";
-// const ROMPATH = "./assets/SMB.nes";
-const ROMPATH = "./assets/color_test.nes";
+const ROMPATH = "./assets/SMB.nes";
+// const ROMPATH = "./assets/color_test.nes";
 const romFile = $file.read(ROMPATH);
 const romString = romFile.toString();
 
-const fc = new Machine({
+const logger = {
   cpu: cpuLog,
   cpuAddrSpace: cpuAddrSpaceLog,
   ppuAddrSpace: ppuAddrSpaceLog,
   oamAddrSpace: oamAddrSpaceLog
-})
+}
+const fc = new Machine(logger)
 fc.loadRom(romString)
 console.log(fc.gameRom.header)
 
@@ -49,10 +50,9 @@ function saveLog() {
   }
 }
 
+const to16pad4 = num => num.toString(16).toUpperCase().padStart(4, "0")
+const to16pad2 = num => num.toString(16).toUpperCase().padStart(2, "0")
 function operateWithLog() {
-  const to16pad4 = num => num.toString(16).toUpperCase().padStart(4, "0")
-  const to16pad2 = num => num.toString(16).toUpperCase().padStart(2, "0")
-
   const MAXUNSAVED = 100000
   if (log.length > MAXUNSAVED) {
     saveLog()
@@ -268,11 +268,20 @@ function getOperateButton() {
         })
 
         if (!num) num = 1
-        while (num--) {
-          operateWithLog()
+
+        if (logger.cpu.doLog) {
+          while (num--) {
+            operateWithLog()
+          }
+        } else {
+          while (num--) {
+            fc.cpu.operate()
+            operateWithLog.lino++
+          }
         }
-      }
-    }
+
+      } // tapped
+    } // events
   }
 }
 
@@ -415,6 +424,37 @@ function getSaveLogButton() {
   }
 }
 
+function getLogToggle() {
+  return {
+    type: "switch",
+    props: {
+      id: "doLog",
+      on: false
+    },
+    layout: (make, view) => {
+      make.centerY.equalTo($("saveLog"))
+      make.right.equalTo($("saveLog").left).offset(-20)
+
+    },
+    events: {
+      changed: sender => {
+        switch (sender.on) {
+          case true:
+            for (const p in logger) {
+              logger[p].doLog = true
+            }
+            break
+          case false:
+            for (const p in logger) {
+              logger[p].doLog = false
+            }
+            break
+        }
+      }
+    }
+  }
+}
+
 function getSetVBlankButton() {
   return {
     type: "button",
@@ -501,11 +541,6 @@ function getRenderButton() {
   }
 }
 
-// expose to REPL
-test = {
-  fc: fc
-}
-
 
 function nesTest() {
   $ui.render({
@@ -522,8 +557,10 @@ function nesTest() {
       getOperateTimesInput(),
       getRamRefreshButton(),
       getVRamRefreshButton(),
+
       getSaveLogButton(),
       getPrintLogButton(),
+      getLogToggle(),
 
       getSetVBlankButton(),
       getClearVBlankButton(),
@@ -533,6 +570,12 @@ function nesTest() {
     ]
   })
 
+}
+
+// expose to REPL
+test = {
+  fc: fc,
+  logger: logger
 }
 
 module.exports = nesTest

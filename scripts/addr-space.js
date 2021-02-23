@@ -179,7 +179,7 @@ class CPUAddrSpace extends AddrSpace {
 
         // if (!isByte(byte)) throw `NotByteError: read CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte}`
         const logedByte = isByte(byte) ? byte : -1
-        this.logger && this.logger.push(`read CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${logedByte.toString(16).padStart(2, "0")}`)
+        this.logger.doLog && this.logger.push(`read CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${logedByte.toString(16).padStart(2, "0")}`)
 
         return isByte(byte) ? byte : 0
 
@@ -190,7 +190,7 @@ class CPUAddrSpace extends AddrSpace {
         if (!isByte(byte)) {
             throw `NotByteError: attempt to write ${byte} to CPUAddrSpace at ${addr.toString(16).padStart(4, "0")}.`
         }
-        this.logger && this.logger.push(`write CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
+        this.logger.doLog && this.logger.push(`write CPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
 
         const [asPart, idx] = this.addressing(addr)
         if (asPart === this.roms[0] || asPart === this.roms[1]) {
@@ -258,12 +258,12 @@ class PPUAddrSpace extends AddrSpace {
 
         if (preventUndefined) {
             if (!isByte(byte)) throw `NotByteError: read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte}`
-            this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
+            this.logger.doLog && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
         } else {
             if (isByte(byte)) {
-                this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
+                this.logger.doLog && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
             } else {
-                this.logger && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte}`)
+                this.logger.doLog && this.logger.push(`read PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte}`)
             }
         }
 
@@ -276,7 +276,7 @@ class PPUAddrSpace extends AddrSpace {
         if (!isByte(byte)) {
             throw `NotByteError: attempt to write ${byte} to PPUAddrSpace at ${addr.toString(16).padStart(4, "0")}.`
         }
-        this.logger && this.logger.push(`write PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
+        this.logger.doLog && this.logger.push(`write PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
 
         const [asPart, idx] = this.addressing(addr)
         if (asPart === this.patternTables[0] || asPart === this.patternTables[1]) {
@@ -302,7 +302,7 @@ class OAMAddrSpace extends AddrSpace {
 
         // if (!isByte(byte)) throw `NotByteError: read OAMAddrSpace ${addr.toString(16).padStart(2, "0")} of ${byte}`
         const logedByte = isByte(byte) ? byte : -1
-        this.logger && this.logger.push(`read OAMAddrSpace ${addr.toString(16).padStart(2, "0")} of ${logedByte.toString(16).padStart(2, "0")}`)
+        this.logger.doLog && this.logger.push(`read OAMAddrSpace ${addr.toString(16).padStart(2, "0")} of ${logedByte.toString(16).padStart(2, "0")}`)
 
         return isByte(byte) ? byte : 0
     }
@@ -315,7 +315,7 @@ class OAMAddrSpace extends AddrSpace {
         if (!isByte(byte)) {
             throw `NotByteError: attempt to write ${byte} to OAMAddrSpace at ${addr.toString(16).padStart(2, "0")}.`
         }
-        this.logger && this.logger.push(`write OAMAddrSpace ${addr.toString(16).padStart(2, "0")} of ${byte.toString(16).padStart(2, "0")}`)
+        this.logger.doLog && this.logger.push(`write OAMAddrSpace ${addr.toString(16).padStart(2, "0")} of ${byte.toString(16).padStart(2, "0")}`)
 
         this.mem[addr] = byte
     }
@@ -330,7 +330,7 @@ class OAMAddrSpace extends AddrSpace {
             if (!isByte(DMABytes[i])) throw `NoByteError: get ${byte} at ${addr.toString(16).padStart(2, "0")}${i.toString(16).padStart(2, "0")} from DMA`
         }
 
-        this.logger && this.logger.push(`DMA by OAMAddrSpace at ${addr.toString(16).padStart(2, "0")}`)
+        this.logger.doLog && this.logger.push(`DMA by OAMAddrSpace at ${addr.toString(16).padStart(2, "0")}`)
 
         this.mem = DMABytes
     }

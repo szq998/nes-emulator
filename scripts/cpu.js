@@ -409,23 +409,23 @@ class CPU {
     if (this.int.reset) {
       this.handleReset()
       this.int.reset = false
-      this.logger && this.logger.push("reset interrupt occurs")
+      this.logger.doLog && this.logger.push("reset interrupt occurs")
       return
     } else if (this.int.nmi) {
       this.handleNmi()
       this.int.nmi = false
-      this.logger && this.logger.push("NMI interrupt occurs")
+      this.logger.doLog && this.logger.push("NMI interrupt occurs")
       return
     } else if (!this.reg.flag.i && this.int.irq) {
       this.handleIrq()
       this.int.irq = false
-      this.logger && this.logger.push("IRQ interrupt occurs")
+      this.logger.doLog && this.logger.push("IRQ interrupt occurs")
       return
     }
 
     // operate
     const instr = this.addrSpace.read(this.reg.pc++);  // read instruction
-    this.logger && this.logger.push(`cpu instruction ${instr.toString(16)}`)
+    this.logger.doLog && this.logger.push(`cpu instruction ${instr.toString(16)}`)
     let opd1 /*opd1 is reg a*/, opd2, addr
     switch (instr) {
       // ctrl 1
@@ -1528,9 +1528,9 @@ class CPU {
         break
     }  // switch-case
 
-    this.logger && typeof opd2 !== "undefined" && this.logger.push(`opd1 ${this.reg.a.toString(16)}`)
-    this.logger && typeof opd2 !== "undefined" && this.logger.push(`opd2 ${opd2.toString(16)}`)
-    this.logger && typeof addr !== "undefined" && this.logger.push(`addr ${addr.toString(16)}`)
+    this.logger.doLog && typeof opd2 !== "undefined" && this.logger.push(`opd1 ${this.reg.a.toString(16)}`)
+    this.logger.doLog && typeof opd2 !== "undefined" && this.logger.push(`opd2 ${opd2.toString(16)}`)
+    this.logger.doLog && typeof addr !== "undefined" && this.logger.push(`addr ${addr.toString(16)}`)
   }  // operate
 
 }  // CPU
