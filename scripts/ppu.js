@@ -33,7 +33,7 @@ class PPU {
         this.drawCallback = drawCallback
 
         // pointer from oamAddr
-        this.oamPointer
+        this.oamPointer = 0  // Todo: is the initial value right?
         // pointer from ppuAddr
         this.vramPointer
         this.ppuAddrStep = 0
@@ -293,7 +293,7 @@ class PPU {
     }
 
     render() {
-        const currPPUMask = this.ppuMask //| 0xff // Todo: enable ppuMask
+        const currPPUMask = this.ppuMask | 0xff // Todo: enable ppuMask
         if (currPPUMask & PPU.SHOW_BG) {
             // draw background
             // 32x0 blocks, each block is made of 8x8 pixels
@@ -312,15 +312,20 @@ class PPU {
             const isHeight16 = this.ppuCtrl & PPU.SP_HEIGHT  // determine sprite's height
             const oam = this.oamAddrSpace.mem  // direct access or performance
             for (let i = 0xfc /* from back to front */; i >= 0; i -= 4) {
-                // skip sprites out of boundary or under background
-                if (oam[i + 0] >= 0xef || oam[i + 2] & 0x20) continue
-                const flipped = oam[i + 2] & 0xc0
+                // skip sprites out of boundary 
+                if (oam[i + 0] >= 0xef) continue
+                
+                // Todo: under background sprite render
+                // if (oam[i + 2] & 0x20) continue
+
+                const flipped = oam[i + 2] & 0xc0 >> 6
                 const pIdx = oam[i + 1]
-                const palHigh = oam[i + 2] & 0x03
+                const palHigh = (oam[i + 2] & 0x03) << 2
 
                 const row = oam[i + 0] + 1
                 const colomn = oam[i + 3]
 
+                // Todo: move this to outside of the loop
                 const keepIntact = {
                     pixels: this.drawCallback.pixels,
                     bmpWidth: this.drawCallback.bmpWidth,
@@ -331,11 +336,11 @@ class PPU {
                 try {
                     if (!isHeight16) {
                         pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr, keepIntact)
-                        flipped && this.spriteFlip(flipped >> 6, pixels, 8)
+                        flipped && this.spriteFlip(flipped, pixels, 8)
                         this.drawCallback.drawBgBlock(row, colomn, 8, 8, pixels)
                     } else {
                         pixels = this.getSprite16Pixel(pIdx, palHigh, keepIntact)
-                        flipped && this.spriteFlip(flipped >> 6, pixels, 16)
+                        flipped && this.spriteFlip(flipped, pixels, 16)
                         this.drawCallback.drawBgBlock(row, colomn, 8, 16, pixels)
                     }
                 } catch (e) {
