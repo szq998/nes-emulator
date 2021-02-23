@@ -472,6 +472,11 @@ function getLogToggle() {
 function getRomSelector() {
   const romDir = "assets"
   const nesFiles = $file.list(romDir).filter(fn => fn.toLowerCase().endsWith(".nes"))
+
+  const lastRom = $cache.get("lastRom") 
+  // move the last selected one to first
+  lastRom && nesFiles.unshift(nesFiles.splice(nesFiles.indexOf(lastRom), 1)[0])
+  console.log(lastRom, nesFiles)
   const romName = nesFiles[0]
   const romFile = $file.read(`${romDir}/${romName}`);
   const romString = romFile.toString();
@@ -498,6 +503,11 @@ function getRomSelector() {
         fc.loadRom(romString)
         console.log(fc.gameRom.header)
         $ui.success(`rom "${romName}" selected`)
+
+        $cache.setAsync({
+          key: "lastRom",
+          value: romName
+        })
       }
     }
   }
