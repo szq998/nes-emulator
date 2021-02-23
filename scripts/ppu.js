@@ -175,11 +175,12 @@ class PPU {
         const patternIdx = this.addrSpace.read(nameTableStartAddr + blkNo)
         // low 2 bits of palette idx
         const patternLowStartAddr = patternTableStartAddr + 16 * patternIdx
-        const patternHighStartAddr = patternTableStartAddr + 16 * patternIdx + 8
+        const patternHighStartAddr = patternLowStartAddr + 8
 
         // 获取调色盘中的颜色
         const bgPaletteStartAddr = 0x3f00
         const pixels = new Uint8Array(8 * 8)
+        let pixelIdx = 0
         for (let row = 0; row < 8; row++) {
             const lowPatternByte = this.addrSpace.read(patternLowStartAddr + row)
             const highPatternByte = this.addrSpace.read(patternHighStartAddr + row) << 1
@@ -191,7 +192,7 @@ class PPU {
                 const paletteIdx = paletteIdxFromPatt ? (paletteIdxFromAttr | paletteIdxFromPatt) : 0
 
                 const palColor = this.addrSpace.read(bgPaletteStartAddr + paletteIdx)
-                pixels[row * 8 + (7 - colomn)] = palColor
+                pixels[pixelIdx++] = palColor
                 // const rgbaColor = plaColor2RGBAColor[palColor]
                 // pixels.push(rgbaColor)
             }  // for colomn
@@ -206,10 +207,11 @@ class PPU {
     getSprite8Pixel(pIdx, palHigh, patternTableStartAddr) {
         // low 2 bits of palette idx
         const patternLowStartAddr = patternTableStartAddr + 16 * pIdx
-        const patternHighStartAddr = patternTableStartAddr + 16 * pIdx + 8
+        const patternHighStartAddr = patternLowStartAddr + 8
 
         const spPaletteStartAddr = 0x3f10
         const pixels = new Uint8Array(8 * 8)
+        let pixelIdx = 0
         for (let row = 0; row < 8; row++) {
             const lowPatternByte = this.addrSpace.read(patternLowStartAddr + row)
             const highPatternByte = this.addrSpace.read(patternHighStartAddr + row) << 1
@@ -222,16 +224,46 @@ class PPU {
                 const paletteIdx = palLow ? (palHigh | palLow) : 0
 
                 const palColor = this.addrSpace.read(spPaletteStartAddr + paletteIdx)
-                pixels[row * 8 + (7 - colomn)] = palColor
-                // const rgbaColor = plaColor2RGBAColor[palColor]
-                // pixels.push(rgbaColor)
+                pixels[pixelIdx++] = palColor
             }  // for colomn
         }  // for row
         return pixels
     }
 
     getSprite16Pixel(pIdx, palHigh) {
+        // pattern table determined by bit0 of pIdx
+        const patternTableStartAddr = pIdx & 1 ? 0x1000 : 0x0000
+        // bit0 now become useless
+        pIdx &= 0xfe
+        // low 2 bits of palette idx
+        const topSpriteLowBitsStartAddr = patternTableStartAddr + 16 * pIdx
+        const topSpriteHighBitsStartAddr = topSpriteLowBitsStartAddr + 8
+        const bottomSpriteLowBitsStartAddr = topSpriteHighBitsStartAddr + 8
+        const bottomSpriteHighBitsStartAddr = bottomSpriteLowBitsStartAddr + 8
 
+        const spPaletteStartAddr = 0x3f10
+        const pixels = new Uint8Array(8 * 16)
+        let pixelIdx = 0
+        for (let part = 0; part < 2; part++) {
+            const patternLowStartAddr = part === 0 ? topSpriteLowBitsStartAddr : bottomSpriteLowBitsStartAddr
+            const patternHighStartAddr = part === 0 ? topSpriteHighBitsStartAddr : bottomSpriteHighBitsStartAddr
+            for (let row = 0; row < 8; row++) {
+                const lowPatternByte = this.addrSpace.read(patternLowStartAddr + row)
+                const highPatternByte = this.addrSpace.read(patternHighStartAddr + row) << 1
+                for (let colomn = 7; colomn >= 0; colomn--) {
+                    const idxBit0 = (lowPatternByte >> colomn) & 1
+                    const idxBit1 = (highPatternByte >> colomn) & 2
+                    const palLow = idxBit1 | idxBit0
+                    // whether transprant or not
+                    // Todo: transprant support
+                    const paletteIdx = palLow ? (palHigh | palLow) : 0
+
+                    const palColor = this.addrSpace.read(spPaletteStartAddr + paletteIdx)
+                    pixels[pixelIdx++] = palColor
+                }  // for colomn
+            }  // for row
+        } // for part
+        return pixels
     }
 
     spriteFlip(flipBits, pixels, height) {
@@ -258,45 +290,49 @@ class PPU {
     }
 
     render() {
-        // draw background
-        // 32x0 blocks, each block is made of 8x8 pixels
-        for (let row = 0; row < 30; row++) {
-            for (let colomn = 0; colomn < 32; colomn++) {
-                const pixels = this.getBgPixelsByBlk(row, colomn, 0)
-                // Todo: 更改渲染回调方式为直接写入位图
-                this.drawCallback.drawBgBlock(row * 8, colomn * 8, 8, 8, pixels)
-            }
-        }
-        // draw sprite
-        // Todo: 
-        const patternTableStartAddr = this.ppuCtrl & PPU.SP_PATTERN_TABLE ? 0x1000 : 0x0000
-        const isHeight16 = this.ppuCtrl & PPU.SP_HEIGHT  // determine sprite's height
-        const oam = this.oamAddrSpace.mem  // direct access or performance
-        for (let i = 0xfc /* from back to front */; i >= 0; i -= 4) {
-            // skip sprites out of boundary or under background
-            if (oam[i + 0] >= 0xef || oam[i + 2] & 0x20) continue
-            const flipped = oam[i + 2] & 0xc0
-            const pIdx = oam[i + 1]
-            const palHigh = oam[i + 2] & 0x03
-
-            let pixels
-            try {
-                if (!isHeight16) {
-                    pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr)
-                    flipped && this.spriteFlip(flipped >> 6, pixels, 8)
-                    this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 8, pixels)
-                } else {
-                    // pixels = this.getSprite16Pixel(pIdx, palHigh)
-                    // flipped this.spriteFlip(flipped >> 6, pixels, 16)
-                    // this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 16, pixels)
+        const currPPUMask = this.ppuMask //| 0xff // Todo: enable ppuMask
+        if (currPPUMask & PPU.SHOW_BG) {
+            // draw background
+            // 32x0 blocks, each block is made of 8x8 pixels
+            for (let row = 0; row < 30; row++) {
+                for (let colomn = 0; colomn < 32; colomn++) {
+                    const pixels = this.getBgPixelsByBlk(row, colomn, 0)
+                    // Todo: 更改渲染回调方式为直接写入位图
+                    this.drawCallback.drawBgBlock(row * 8, colomn * 8, 8, 8, pixels)
                 }
-            } catch (e) {
-                // catch range error
-                console.log("error in sprite render")
-                throw e
             }
         }
+        if (currPPUMask & PPU.SHOW_SP) {
+            // draw sprite
+            // Todo: 
+            const patternTableStartAddr = this.ppuCtrl & PPU.SP_PATTERN_TABLE ? 0x1000 : 0x0000
+            const isHeight16 = this.ppuCtrl & PPU.SP_HEIGHT  // determine sprite's height
+            const oam = this.oamAddrSpace.mem  // direct access or performance
+            for (let i = 0xfc /* from back to front */; i >= 0; i -= 4) {
+                // skip sprites out of boundary or under background
+                if (oam[i + 0] >= 0xef || oam[i + 2] & 0x20) continue
+                const flipped = oam[i + 2] & 0xc0
+                const pIdx = oam[i + 1]
+                const palHigh = oam[i + 2] & 0x03
 
+                let pixels
+                try {
+                    if (!isHeight16) {
+                        pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr)
+                        flipped && this.spriteFlip(flipped >> 6, pixels, 8)
+                        this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 8, pixels)
+                    } else {
+                        pixels = this.getSprite16Pixel(pIdx, palHigh)
+                        flipped && this.spriteFlip(flipped >> 6, pixels, 16)
+                        this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 16, pixels)
+                    }
+                } catch (e) {
+                    // catch range error
+                    console.log("error in sprite render")
+                    throw e
+                }
+            }
+        }
     }  // render
 }  // ppu
 
@@ -306,6 +342,9 @@ PPU.SP_PATTERN_TABLE = 0x08
 PPU.BG_PATTERN_TABLE = 0x10
 PPU.SP_HEIGHT = 0x20
 PPU.GEN_NMI_IN_VBLANK = 0x80
+// $2001
+PPU.SHOW_BG = 0x08
+PPU.SHOW_SP = 0x10
 // $2002
 PPU.VBLANK_START = 0x80
 
