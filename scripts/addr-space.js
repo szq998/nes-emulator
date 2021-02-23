@@ -104,7 +104,7 @@ class CPUAddrSpace extends AddrSpace {
             this.roms[0] = rom.slice(0, 0x4000)
             this.roms[1] = rom.slice(0x4000, 0x8000)
         } else {
-            throw "Illegal PRG-ROM length."
+            throw `Illegal PRG-ROM length ${rom.length.toString(16)}.`
         }
     }
 
@@ -204,19 +204,23 @@ class CPUAddrSpace extends AddrSpace {
 class PPUAddrSpace extends AddrSpace {
     constructor(logger = null) {
         super(logger)
-        this.patternTables = Array(2)
+        this.patternTable
         this.nameTable = Array(0x1000)
         this.palette = Array(0x0020)
 
+        this.isChrRam = false
         this.isFourScreen = false
     }  // constructor
 
     loadRom(rom) {
-        if (rom.length === 0x2000) {
-            this.patternTables[0] = rom.slice(0, 0x1000)
-            this.patternTables[1] = rom.slice(0x1000, 0x2000)
+        if (rom.length === 0) {
+            this.patternTable = Array(0x2000)
+            this.isChrRam = true
+        } else if (rom.length === 0x2000) {
+            this.patternTable = rom.slice()
+            this.isChrRam = false 
         } else {
-            throw "Illegal CHR-ROM length."
+            throw `Illegal CHR-ROM length ${rom.length.toString(16)}.`
         }
     }
 
@@ -226,12 +230,9 @@ class PPUAddrSpace extends AddrSpace {
         }
 
         addr &= 0x3fff  // mirror 4000-7fff to 0x0000-0x3fff
-        if (addr < 0x1000) {
-            // pattern table 0 0x0000-0x0fff
-            return [this.patternTables[0], addr & 0x0fff]
-        } else if (addr < 0x2000) {
-            // pattern table 1 0x1000-0x1fff
-            return [this.patternTables[1], addr & 0x0fff]
+        if (addr < 0x2000) {
+            // pattern table 0 0x0000-0x1fff
+            return [this.patternTable, addr & 0x1fff]
         } else if (addr < 0x3f00) {
             // addr &= 0x2fff  // mirror 0x3000-3eff to 0x2000-2eff
             return [this.nameTable, addr & (this.isFourScreen ? 0x0fff : 0x07ff)]
@@ -279,7 +280,7 @@ class PPUAddrSpace extends AddrSpace {
         this.logger.doLog && this.logger.push(`write PPUAddrSpace ${addr.toString(16).padStart(4, "0")} of ${byte.toString(16).padStart(2, "0")}`)
 
         const [asPart, idx] = this.addressing(addr)
-        if (asPart === this.patternTables[0] || asPart === this.patternTables[1]) {
+        if (!this.isChrRam && asPart === this.patternTable) {
             throw `ReadOnlyError: attempt to write ${byte.toString(16).padStart(2, "0")} to PPUAddrSpace at ${addr.toString(16).padStart(4, "0")}.`
         }
 
@@ -296,7 +297,7 @@ class OAMAddrSpace extends AddrSpace {
 
     read(addr) {
         if (!isValidAddress(addr, 8)) {
-            throw `InvalidAddressError: ${addr} is't a valid OAM address.`
+            throw `InvalidAddressError: ${addr} is't a valid OAM read address.`
         }
         const byte = this.mem[addr]
 
@@ -309,7 +310,7 @@ class OAMAddrSpace extends AddrSpace {
 
     write(addr, byte) {
         if (!isValidAddress(addr, 8)) {
-            throw `InvalidAddressError: ${addr} is't a valid OAM address.`
+            throw `InvalidAddressError: ${addr} is't a valid OAM write address.`
         }
 
         if (!isByte(byte)) {
@@ -322,7 +323,7 @@ class OAMAddrSpace extends AddrSpace {
 
     DMA(addr) {
         if (!isValidAddress(addr, 8)) {
-            throw `InvalidAddressError: ${addr} is't a valid DMA address.`
+            throw `InvalidAddressError: ${addr} is't a valid OAM DMA address.`
         }
         const DMABytes = this.DMAPort(addr)
         for (let i = 0; i < DMABytes.length; i++) {
