@@ -9,12 +9,18 @@ const oamAddrSpaceLog = []
 
 let renderCavOc
 
-// const ROMPATH = "./assets/nestest.nes";
+// const ROMPATH = "assets";
 // const ROMPATH = "./assets/BOMBMAN.NES";
-const ROMPATH = "./assets/SMB.nes";
+// const ROMPATH = "./assets/SMB.nes";
 // const ROMPATH = "./assets/color_test.nes";
-const romFile = $file.read(ROMPATH);
-const romString = romFile.toString();
+// const ROMPATH = "./assets/basics.nes";
+// const ROMPATH = "./assets/alignment.nes";
+// const ROMPATH = "./assets/corners.nes";
+// const ROMPATH = "./assets/flip.nes";
+// const ROMPATH = "./assets/left_clip.nes";
+// const ROMPATH = "./assets/edge_timing.nes";
+// const romFile = $file.read(ROMPATH);
+// const romString = romFile.toString();
 
 const logger = {
   cpu: cpuLog,
@@ -23,14 +29,22 @@ const logger = {
   oamAddrSpace: oamAddrSpaceLog
 }
 const fc = new Machine(logger)
-fc.loadRom(romString)
-console.log(fc.gameRom.header)
+// fc.loadRom(romString)
+// console.log(fc.gameRom.header)
+
+function resetLog() {
+  if ($("doLog").on) {
+    saveLog()
+  }
+  saveLog.dirname = null
+  operateWithLog.lino = 0
+}
 
 function saveLog() {
   if (log.length === 0) return
 
   if (!saveLog.dirname) {
-    const romName = ROMPATH.split("/").slice(-1)[0]
+    const romName = $("romPicker")[0]
     saveLog.dirname = `log/${romName.toUpperCase()}-${Date()}`
     $file.mkdir(saveLog.dirname);
   }
@@ -455,6 +469,40 @@ function getLogToggle() {
   }
 }
 
+function getRomSelector() {
+  const romDir = "assets"
+  const nesFiles = $file.list(romDir).filter(fn => fn.toLowerCase().endsWith(".nes"))
+  const romName = nesFiles[0]
+  const romFile = $file.read(`${romDir}/${romName}`);
+  const romString = romFile.toString();
+  fc.loadRom(romString)
+  console.log(fc.gameRom.header)
+
+  return {
+    type: "picker",
+    props: {
+      id: "romPicker",
+      items: [nesFiles]
+    },
+    layout: (make, view) => {
+      make.top.equalTo($("operateTimes").bottom).offset(0)
+      make.right.equalTo($("operateTimes"))
+      make.size.equalTo($size(200, 170))
+    },
+    events: {
+      changed: sender => {
+        resetLog()
+        const romName = sender.data[0]
+        const romFile = $file.read(`${romDir}/${romName}`);
+        const romString = romFile.toString();
+        fc.loadRom(romString)
+        console.log(fc.gameRom.header)
+        $ui.success(`rom "${romName}" selected`)
+      }
+    }
+  }
+}
+
 function getSetVBlankButton() {
   return {
     type: "button",
@@ -561,6 +609,8 @@ function nesTest() {
       getSaveLogButton(),
       getPrintLogButton(),
       getLogToggle(),
+
+      getRomSelector(),
 
       getSetVBlankButton(),
       getClearVBlankButton(),
