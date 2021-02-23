@@ -234,8 +234,28 @@ class PPU {
 
     }
 
-    sprite8Flip() { }
-    sprite16Flip() { }
+    spriteFlip(flipBits, pixels, height) {
+        switch (flipBits) {
+            case 3: // vertically & horizontally
+                pixels.reverse()
+                return
+            case 2: // vertically
+                pixels.reverse()
+                for (let i = 0; i < height; ++i) {
+                    const currRow = new Uint8Array(pixels.buffer, i * 8, 8)
+                    currRow.reverse()
+                }
+                return
+            case 1: // horizontally
+                for (let i = 0; i < height; ++i) {
+                    const currRow = new Uint8Array(pixels.buffer, i * 8, 8)
+                    currRow.reverse()
+                }
+                retur
+            case 0: // none
+                return
+        }
+    }
 
     render() {
         // draw background
@@ -255,28 +275,25 @@ class PPU {
         for (let i = 0xfc /* from back to front */; i >= 0; i -= 4) {
             // skip sprites out of boundary or under background
             if (oam[i + 0] >= 0xef || oam[i + 2] & 0x20) continue
-            const vFliped = oam[i + 2] & 0x80
-            const hFliped = oam[i + 2] & 0x40
+            const flipped = oam[i + 2] & 0xc0
             const pIdx = oam[i + 1]
             const palHigh = oam[i + 2] & 0x03
 
             let pixels
-            if (!isHeight16) {
-                pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr)
-                // console.log(pixels)
-
-                // if (vFliped || hFliped) {
-                //     this.sprite8Flip()
-                // }
-
-                this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 8, pixels)
-            } else {
-                // pixels = this.getSprite16Pixel(pIdx, palHigh)
-                // if (vFliped || hFliped) {
-                //     this.sprite16Flip()
-                // }
-
-                // this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 16, pixels)
+            try {
+                if (!isHeight16) {
+                    pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr)
+                    flipped && this.spriteFlip(flipped >> 6, pixels, 8)
+                    this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 8, pixels)
+                } else {
+                    // pixels = this.getSprite16Pixel(pIdx, palHigh)
+                    // flipped this.spriteFlip(flipped >> 6, pixels, 16)
+                    // this.drawCallback.drawBgBlock(oam[i + 0] + 1, oam[i + 3], 8, 16, pixels)
+                }
+            } catch (e) {
+                // catch range error
+                console.log("error in sprite render")
+                throw e
             }
         }
 
