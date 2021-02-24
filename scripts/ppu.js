@@ -203,14 +203,8 @@ class PPU {
         // Todo: 
     }
 
-    getSprite8Pixel(pIdx, palHigh, patternTableStartAddr, keepIntact) {
-        // low 2 bits of palette idx
-        const patternLowStartAddr = patternTableStartAddr + 16 * pIdx
-        const patternHighStartAddr = patternLowStartAddr + 8
-
+    fillSpriteBlockPixels(pixels, pixelIdx, palHigh, patternLowStartAddr, patternHighStartAddr) {
         const spPaletteStartAddr = 0x3f10
-        const pixels = new Uint8Array(8 * 8)
-        let pixelIdx = 0
         for (let row = 0; row < 8; row++) {
             const lowPatternByte = this.addrSpace.read(patternLowStartAddr + row)
             const highPatternByte = this.addrSpace.read(patternHighStartAddr + row) << 1
@@ -223,15 +217,23 @@ class PPU {
                     const paletteIdx = palHigh | palLow
                     pixels[pixelIdx++] = this.addrSpace.read(spPaletteStartAddr + paletteIdx)
                 } else {
-                    const { startPoint, bmpWidth } = keepIntact
-                    pixels[pixelIdx++] = keepIntact.pixels[startPoint + row * bmpWidth + (7 - colomn)]
+                    pixels[pixelIdx++] = 0x40 // 0x40 is out of possible color, used for further transparent process
                 }
             }  // for colomn
         }  // for row
+    }
+
+    getSprite8Pixel(pIdx, palHigh, patternTableStartAddr) {
+        // low 2 bits of palette idx
+        const patternLowStartAddr = patternTableStartAddr + 16 * pIdx
+        const patternHighStartAddr = patternLowStartAddr + 8
+
+        const pixels = new Uint8Array(8 * 8)
+        this.fillSpriteBlockPixels(pixels, 0, palHigh, patternLowStartAddr, patternHighStartAddr)
         return pixels
     }
 
-    getSprite16Pixel(pIdx, palHigh, keepIntact) {
+    getSprite16Pixel(pIdx, palHigh) {
         // pattern table determined by bit0 of pIdx
         const patternTableStartAddr = pIdx & 1 ? 0x1000 : 0x0000
         // bit0 now become useless
@@ -242,29 +244,11 @@ class PPU {
         const bottomSpriteLowBitsStartAddr = topSpriteHighBitsStartAddr + 8
         const bottomSpriteHighBitsStartAddr = bottomSpriteLowBitsStartAddr + 8
 
-        const spPaletteStartAddr = 0x3f10
         const pixels = new Uint8Array(8 * 16)
-        let pixelIdx = 0
         for (let part = 0; part < 2; part++) {
             const patternLowStartAddr = part === 0 ? topSpriteLowBitsStartAddr : bottomSpriteLowBitsStartAddr
             const patternHighStartAddr = part === 0 ? topSpriteHighBitsStartAddr : bottomSpriteHighBitsStartAddr
-            for (let row = 0; row < 8; row++) {
-                const lowPatternByte = this.addrSpace.read(patternLowStartAddr + row)
-                const highPatternByte = this.addrSpace.read(patternHighStartAddr + row) << 1
-                for (let colomn = 7; colomn >= 0; colomn--) {
-                    const idxBit0 = (lowPatternByte >> colomn) & 1
-                    const idxBit1 = (highPatternByte >> colomn) & 2
-                    const palLow = idxBit1 | idxBit0
-                    // whether transprant or not
-                    if (palLow) {
-                        const paletteIdx = palHigh | palLow
-                        pixels[pixelIdx++] = this.addrSpace.read(spPaletteStartAddr + paletteIdx)
-                    } else {
-                        const { startPoint, bmpWidth } = keepIntact
-                        pixels[pixelIdx++] = keepIntact.pixels[startPoint + (row + part * 8) * bmpWidth + (7 - colomn)]
-                    }
-                }  // for colomn
-            }  // for row
+            this.fillSpriteBlockPixels(pixels, part * 64, palHigh, patternLowStartAddr, patternHighStartAddr)
         } // for part
         return pixels
     }
@@ -293,7 +277,7 @@ class PPU {
     }
 
     render() {
-        const currPPUMask = this.ppuMask | 0xff // Todo: enable ppuMask
+        const currPPUMask = this.ppuMask // | 0xff // Todo: enable ppuMask
         if (currPPUMask & PPU.SHOW_BG) {
             // draw background
             // 32x0 blocks, each block is made of 8x8 pixels
@@ -314,7 +298,7 @@ class PPU {
             for (let i = 0xfc /* from back to front */; i >= 0; i -= 4) {
                 // skip sprites out of boundary 
                 if (oam[i + 0] >= 0xef) continue
-                
+
                 // Todo: under background sprite render
                 // if (oam[i + 2] & 0x20) continue
 
@@ -345,8 +329,8 @@ class PPU {
                     }
                 } catch (e) {
                     // catch range error
-                    console.log("error in sprite render")
-                    throw e
+                    // throw e
+                    console.error("error in sprite render")
                 }
             }
         }
