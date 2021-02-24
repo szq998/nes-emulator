@@ -33,7 +33,7 @@ class Machine {
     this.drawCallback = {
       drawBgBlock: this.bitmap.setPixelBlock.bind(this.bitmap),
       pixels: this.bitmap.pixels,
-      bmpWidth: this.bitmap.widthWithPad
+      getIdxByRowColomn: this.bitmap.getIdxByRowColomn.bind(this.bitmap)
     }
 
     this.cpuAddrSpace = new CPUAddrSpace(logger && logger.cpuAddrSpace)

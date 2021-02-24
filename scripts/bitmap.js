@@ -64,7 +64,6 @@ class BitMap8Bit {
         const biHeaderSize = 40
         const headerSize = bfHeaderSize + biHeaderSize
         const bfOffBits = headerSize + colorCount * 4
-        this.imgStart = bfOffBits
         const bfSize = bfOffBits + biSizeImage
 
         this.data = new Uint8Array(bfSize)
@@ -106,12 +105,20 @@ class BitMap8Bit {
 
     get bmp() { return this.data }
 
-    setPixelBlock(row, colomn, blkRowSize, blkColomnSize, blkPixels) {
-        for (let i = 0; i < blkColomnSize; i++) {
-            const sliceStart = i * blkRowSize
-            const sliced = blkPixels.slice(sliceStart, sliceStart + blkRowSize)
+    getIdxByRowColomn(row, colomn) {
+        if (row < this.height && colomn < this.width) return row * this.widthWithPad + colomn
+        else return -1
+    }
 
-            this.data.set(sliced, this.imgStart + this.widthWithPad * (i + row) + colomn)
+    setPixelBlock(row, colomn, blkRowSize, blkColomnSize, blkPixels) {
+        const sliceLen = Math.min(blkRowSize, this.widthWithPad - colomn)
+        for (let i = 0; i < blkColomnSize; i++) {
+            // const sliceStart = i * blkRowSize
+            // const sliced = blkPixels.slice(sliceStart, sliceStart + blkRowSize)
+            const offset = this.getIdxByRowColomn(row + i, colomn)
+            if (offset < 0) return
+            const sliced = new Uint8Array(blkPixels.buffer, i * blkRowSize, sliceLen)  // bypass memory copy
+            this.pixels.set(sliced, offset)
         }
     }
 }
