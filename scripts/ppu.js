@@ -276,6 +276,19 @@ class PPU {
         }
     }
 
+    makeTransparent(blkPixels, row, colomn, height) {
+        const { pixels } = this.drawCallback
+        let bIdx = 0
+        for (let r = 0; r < height; r++) {
+            for (let c = 0; c < 8; c++, bIdx++) {
+                if (blkPixels[bIdx] < 0x40) continue
+                const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
+                if ((pIdx) < 0) continue
+                blkPixels[bIdx] = pixels[pIdx]
+            }
+        }
+    }
+
     render() {
         const currPPUMask = this.ppuMask // | 0xff // Todo: enable ppuMask
         if (currPPUMask & PPU.SHOW_BG) {
@@ -310,21 +323,23 @@ class PPU {
                 const colomn = oam[i + 3]
 
                 // Todo: move this to outside of the loop
-                const keepIntact = {
-                    pixels: this.drawCallback.pixels,
-                    bmpWidth: this.drawCallback.bmpWidth,
-                    startPoint: row * this.drawCallback.bmpWidth + colomn
-                }
+                // const keepIntact = {
+                //     pixels: this.drawCallback.pixels,
+                //     bmpWidth: this.drawCallback.bmpWidth,
+                //     startPoint: row * this.drawCallback.bmpWidth + colomn
+                // }
 
                 let pixels
                 try {
                     if (!isHeight16) {
-                        pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr, keepIntact)
+                        pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr)
                         flipped && this.spriteFlip(flipped, pixels, 8)
+                        this.makeTransparent(pixels, row, colomn, 8)
                         this.drawCallback.drawBgBlock(row, colomn, 8, 8, pixels)
                     } else {
-                        pixels = this.getSprite16Pixel(pIdx, palHigh, keepIntact)
+                        pixels = this.getSprite16Pixel(pIdx, palHigh)
                         flipped && this.spriteFlip(flipped, pixels, 16)
+                        this.makeTransparent(pixels, row, colomn, 16)
                         this.drawCallback.drawBgBlock(row, colomn, 8, 16, pixels)
                     }
                 } catch (e) {
