@@ -283,8 +283,23 @@ class PPU {
             for (let c = 0; c < 8; c++, bIdx++) {
                 if (blkPixels[bIdx] < 0x40) continue
                 const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
-                if ((pIdx) < 0) continue
+                if (pIdx < 0) continue
                 blkPixels[bIdx] = pixels[pIdx]
+            }
+        }
+    }
+
+    makeUnderBg(blkPixels, row, colomn, height) {
+        const { pixels } = this.drawCallback
+        const bgColor = this.addrSpace.read(0x3f00)
+        let bIdx = 0
+        for (let r = 0; r < height; r++) {
+            for (let c = 0; c < 8; c++, bIdx++) {
+                const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
+                if (pIdx < 0) continue
+                if (pixels[pIdx] !== bgColor || blkPixels[bIdx] > 0x3f) {
+                    blkPixels[bIdx] = pixels[pIdx]
+                }
             }
         }
     }
@@ -313,6 +328,7 @@ class PPU {
                 if (oam[i + 0] >= 0xef) continue
 
                 // Todo: under background sprite render
+                const underBg = oam[i + 2] & 0x20
                 // if (oam[i + 2] & 0x20) continue
 
                 const flipped = oam[i + 2] & 0xc0 >> 6
@@ -334,12 +350,12 @@ class PPU {
                     if (!isHeight16) {
                         pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr)
                         flipped && this.spriteFlip(flipped, pixels, 8)
-                        this.makeTransparent(pixels, row, colomn, 8)
+                        underBg ? this.makeUnderBg(pixels, row, colomn, 16) : this.makeTransparent(pixels, row, colomn, 16)
                         this.drawCallback.drawBgBlock(row, colomn, 8, 8, pixels)
                     } else {
                         pixels = this.getSprite16Pixel(pIdx, palHigh)
                         flipped && this.spriteFlip(flipped, pixels, 16)
-                        this.makeTransparent(pixels, row, colomn, 16)
+                        underBg ? this.makeUnderBg(pixels, row, colomn, 16) : this.makeTransparent(pixels, row, colomn, 16)
                         this.drawCallback.drawBgBlock(row, colomn, 8, 16, pixels)
                     }
                 } catch (e) {
