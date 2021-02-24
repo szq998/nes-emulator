@@ -8,6 +8,8 @@ const ppuAddrSpaceLog = []
 const oamAddrSpaceLog = []
 
 let renderCavOc
+let autoVB = true
+let autoRd = true
 
 // const ROMPATH = "assets";
 // const ROMPATH = "./assets/BOMBMAN.NES";
@@ -31,6 +33,34 @@ const logger = {
 const fc = new Machine(logger)
 // fc.loadRom(romString)
 // console.log(fc.gameRom.header)
+
+function operateBtnTapped(times) {
+  if (autoVB) {
+    fc.setVBlank()
+  }
+
+  const cpuTimeStart = Date.now()
+  let ppuTimeStart
+  if (logger.cpu.doLog) {
+    while (times--) {
+      operateWithLog()
+    }
+  } else {
+    while (times--) {
+      fc.cpu.operate()
+      operateWithLog.lino++
+    }
+  }
+  const cpuTime = Date.now() - cpuTimeStart
+  let ppuTime = null
+  if (autoRd) {
+    ppuTimeStart = Date.now()
+    fc.ppu.render()
+    renderCavOc.$setNeedsDisplay()
+    ppuTime = Date.now() - ppuTimeStart
+  }
+  console.log(`cpu time: ${cpuTime}, ppu time: ${ppuTime}`)
+}
 
 function resetLog() {
   if ($("doLog").on) {
@@ -258,6 +288,7 @@ function getOAMList() {
 }
 
 function getOperateButton() {
+  let keepOperating = false
   return {
     type: "button",
     props: {
@@ -270,35 +301,39 @@ function getOperateButton() {
       make.centerY.equalTo(view.super).offset(100)
     },
     events: {
-      tapped: function (sender) {
-        // operate(fc.cpu)
-        // fc.work() 
+      tapped: sender => {
+        if (keepOperating) {
+          keepOperating = false
+          sender.title = "opearte"
+          return
+        }
         let num = Number($("operateTimes").text)
         $("operateTimes").blur()
+        $cache.setAsync({ key: "opTimes", value: num })
+        if (!num) { num = 1 }
 
-        $cache.setAsync({
-          key: "opTimes",
-          value: num
-        })
+        operateBtnTapped(num)
+      }, // tapped
+      longPressed: info => {
+        info.sender.title = "opearting..."
+        keepOperating = true
 
-        if (!num) num = 1
+        let num = Number($("operateTimes").text)
+        $("operateTimes").blur()
+        $cache.setAsync({ key: "opTimes", value: num })
+        if (!num || num < 1000) {  num = 1000 }
 
-        if ($("autoVB").on) {
-          fc.setVBlank()
-        }
-
-        if (logger.cpu.doLog) {
-          while (num--) {
-            operateWithLog()
+        (function longOperate() {
+          try {
+            operateBtnTapped(num)
+          } catch (e) {
+            // info.sender.title = "operate"
+            // throw e
+            console.error(e)
           }
-        } else {
-          while (num--) {
-            fc.cpu.operate()
-            operateWithLog.lino++
-          }
-        }
-
-      } // tapped
+          keepOperating && setTimeout(longOperate, 0)
+        })()
+      } // longPressed
     } // events
   }
 }
@@ -478,7 +513,7 @@ function getRomSelector() {
   const nesFiles = $file.list(romDir).filter(fn => fn.toLowerCase().endsWith(".nes"))
   nesFiles.sort()
 
-  const lastRom = $cache.get("lastRom") 
+  const lastRom = $cache.get("lastRom")
   // move the last selected one to first
   lastRom && nesFiles.indexOf(lastRom) != -1 && nesFiles.unshift(nesFiles.splice(nesFiles.indexOf(lastRom), 1)[0])
 
@@ -564,11 +599,16 @@ function getVBlankToggle() {
     type: "switch",
     props: {
       id: "autoVB",
-      on: true
+      on: autoVB
     },
     layout: (make, view) => {
       make.centerY.equalTo($("setVB"))
       make.left.equalTo($("setVB").right).offset(20)
+    },
+    events: {
+      changed: sender => {
+        autoVB = sender.on
+      }
     }
   }
 }
@@ -612,10 +652,28 @@ function getRenderButton() {
     events: {
       tapped: function (sender) {
         fc.ppu.render()
-        // $("renderCavs").ocValue().$setNeedsDisplay()
         renderCavOc.$setNeedsDisplay()
       }
     },
+  }
+}
+
+function getRenderToggle() {
+  return {
+    type: "switch",
+    props: {
+      id: "autoRd",
+      on: true
+    },
+    layout: (make, view) => {
+      make.centerY.equalTo($("renderBtn"))
+      make.left.equalTo($("renderBtn").right).offset(20)
+    },
+    events: {
+      changed: sender => {
+        autoRd = sender.on
+      }
+    }
   }
 }
 
@@ -662,6 +720,7 @@ function nesTest() {
 
       getRenderButton(),
       getRenderCanvas(),
+      getRenderToggle(),
 
       getKey("right", (make, view) => {
         make.size.equalTo($size(80, 50))
@@ -711,7 +770,8 @@ function nesTest() {
 // expose to REPL
 test = {
   fc: fc,
-  logger: logger
+  logger: logger,
+  getRdoc: () => renderCavOc
 }
 
 module.exports = nesTest
