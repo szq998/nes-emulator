@@ -27,7 +27,7 @@ class PPU {
         this.addrSpace = addrSpace // a.k.a vram
         this.oamAddrSpace = oamAddrSpace
         this.ppuReg = ppuReg
-        this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead.bind(this), null, this.oamDataRead.bind(this), null, null, this.ppuDataRead.bind(this)]
+        this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead.bind(this), null, null/*this.oamDataRead.bind(this)*/, null, null, this.ppuDataRead.bind(this)]
         this.ppuReg.regWritedCallbacks = [null, null, null, this.oamAddrWrited.bind(this), this.oamDataWrited.bind(this), null, this.ppuAddrWrited.bind(this), this.ppuDataWrited.bind(this), this.oamDMAWrited.bind(this)]
 
         this.drawCallback = drawCallback
@@ -75,10 +75,10 @@ class PPU {
         this.clearVBlank()
     }
 
-    oamDataRead(byte) {
-        // increase oamAddr
-        this.oamPointer = (this.oamPointer + 1) & 0xff
-    }
+    // oamDataRead(byte) {
+    //     // increase oamAddr
+    //     this.oamPointer = (this.oamPointer + 1) & 0xff
+    // }
 
     ppuDataRead(byte) {
         // increase ppuAddr
