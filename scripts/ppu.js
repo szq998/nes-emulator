@@ -276,16 +276,34 @@ class PPU {
         }
     }
 
-    makeTransparent(blkPixels, row, colomn, height) {
+    makeTransparent(blkPixels, row, colomn, height, isSp0) {
         const { pixels } = this.drawCallback
         let bIdx = 0
-        for (let r = 0; r < height; r++) {
-            for (let c = 0; c < 8; c++, bIdx++) {
-                if (blkPixels[bIdx] < 0x40) continue
-                const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
-                if (pIdx < 0) continue
-                blkPixels[bIdx] = pixels[pIdx]
+        if (!isSp0) {
+            for (let r = 0; r < height; r++) {
+                for (let c = 0; c < 8; c++, bIdx++) {
+                    if (blkPixels[bIdx] < 0x40) continue
+                    const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
+                    if (pIdx < 0) continue
+                    blkPixels[bIdx] = pixels[pIdx]
+                }
             }
+            return false
+        } else {
+            let hit = false
+            const bgColor = this.addrSpace.read(0x3f00)
+            for (let r = 0; r < height; r++) {
+                for (let c = 0; c < 8; c++, bIdx++) {
+                    const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
+                    if (pIdx < 0) continue
+                    if (blkPixels[bIdx] < 0x40 ) {
+                        if (!hit && pixels[pIdx] != bgColor ) { hit = true }
+                        continue
+                    }
+                    blkPixels[bIdx] = pixels[pIdx]
+                }
+            }
+            return hit
         }
     }
 
@@ -321,13 +339,12 @@ class PPU {
             // draw sprite
             // Todo: 
             const patternTableStartAddr = this.ppuCtrl & PPU.SP_PATTERN_TABLE ? 0x1000 : 0x0000
-            const isHeight16 = this.ppuCtrl & PPU.SP_HEIGHT  // determine sprite's height
-            const oam = this.oamAddrSpace.mem  // direct access or performance
+            const height = this.ppuCtrl & PPU.SP_HEIGHT ? 16 : 8 // determine sprite's height
+            const oam = this.oamAddrSpace.mem  // direct access for performance
             for (let i = 0xfc /* from back to front */; i >= 0; i -= 4) {
                 // skip sprites out of boundary 
                 if (oam[i + 0] >= 0xef) continue
 
-                // Todo: under background sprite render
                 const underBg = oam[i + 2] & 0x20
                 // if (oam[i + 2] & 0x20) continue
 
@@ -347,17 +364,14 @@ class PPU {
 
                 let pixels
                 try {
-                    if (!isHeight16) {
+                    if (height === 8) {
                         pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr)
-                        flipped && this.spriteFlip(flipped, pixels, 8)
-                        underBg ? this.makeUnderBg(pixels, row, colomn, 16) : this.makeTransparent(pixels, row, colomn, 16)
-                        this.drawCallback.drawBgBlock(row, colomn, 8, 8, pixels)
                     } else {
                         pixels = this.getSprite16Pixel(pIdx, palHigh)
-                        flipped && this.spriteFlip(flipped, pixels, 16)
-                        underBg ? this.makeUnderBg(pixels, row, colomn, 16) : this.makeTransparent(pixels, row, colomn, 16)
-                        this.drawCallback.drawBgBlock(row, colomn, 8, 16, pixels)
                     }
+                    flipped && this.spriteFlip(flipped, pixels, height)
+                    underBg ? this.makeUnderBg(pixels, row, colomn, height) : this.makeTransparent(pixels, row, colomn, height)
+                    this.drawCallback.drawBgBlock(row, colomn, 8, height, pixels)
                 } catch (e) {
                     // catch range error
                     // throw e
