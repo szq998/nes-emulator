@@ -511,7 +511,7 @@ function getLogToggle() {
 function getRomSelector() {
   const romDir = "assets"
   const nesFiles = $file.list(romDir).filter(fn => fn.toLowerCase().endsWith(".nes"))
-  nesFiles.sort()
+  nesFiles.sort((a, b) => a.toLowerCase().charCodeAt() - b.toLowerCase().charCodeAt())
 
   const lastRom = $cache.get("lastRom")
   // move the last selected one to first
