@@ -62,6 +62,7 @@ class PPUReg {
     get 5() { throw "WriteOnlyError" }
     set 5(byte) {
         this.innerBytes[5] = byte
+        this[6] = byte
         this.regWritedCallbacks[5] && this.regWritedCallbacks[5](byte)
     }
 
@@ -121,9 +122,8 @@ class Controller {
         return v
     }
 
-    set 1(byte) {
-        console.log("write 4017")
-    }
+    set 1(byte) { // Todo: APU related }
+}
 
     controllerPressed(controller, key) {
         const offset = controller === 0 ? 0 : 8
@@ -308,8 +308,9 @@ class CPUAddrSpace extends AddrSpace {
 }
 
 class PPUAddrSpace extends AddrSpace {
-    constructor(logger = null) {
+    constructor(paletteWrited, logger = null) {
         super(logger)
+        this.paletteWrited = paletteWrited
         this.patternTable
         this.nameTable = Array(0x1000)
         this.palette = Array(0x0020)
@@ -351,11 +352,6 @@ class PPUAddrSpace extends AddrSpace {
                 addr &= 0xffef
             }
             return [this.palette, addr & 0x01f]
-            // if (addr < 0x3f10) {
-            //     // background 0x3f00-0x3f0f
-            // } else if (addr < 0x3f20) {
-            //     // sprite 0x3f10-0x3f1f
-            // }
         }
     }
 
@@ -391,6 +387,9 @@ class PPUAddrSpace extends AddrSpace {
         }
 
         asPart[idx] = byte
+        if (addr >= 0x3f00 && addr < 0x4000) {
+            this.paletteWrited(idx, byte)
+        }
     }  // write 
 }
 

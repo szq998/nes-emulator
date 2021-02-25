@@ -29,15 +29,17 @@ const fcColorPalette = new Uint32Array([
 
 class Machine {
   constructor(logger = null) {
-    this.bitmap = new BitMap8Bit(256, 240, fcColorPalette)
+    this.bitmap = new BitMap8Bit(256, 240, 32)
     this.drawCallback = {
       drawBgBlock: this.bitmap.setPixelBlock.bind(this.bitmap),
       pixels: this.bitmap.pixels,
       getIdxByRowColomn: this.bitmap.getIdxByRowColomn.bind(this.bitmap)
     }
 
+    const paletteWrited = (idx, bgrIdx) => this.bitmap.palette[idx] = fcColorPalette[bgrIdx]
+
     this.cpuAddrSpace = new CPUAddrSpace(logger && logger.cpuAddrSpace)
-    this.ppuAddrSpace = new PPUAddrSpace(logger && logger.ppuAddrSpace)
+    this.ppuAddrSpace = new PPUAddrSpace(paletteWrited, logger && logger.ppuAddrSpace)
     this.oamAddrSpace = new OAMAddrSpace(this .cpuAddrSpace.DMAPort, logger && logger.oamAddrSpace)
     this.cpu = new CPU(this.cpuAddrSpace, logger && logger.cpu)
     this.ppu = new PPU(this.ppuAddrSpace, this.oamAddrSpace, this.cpuAddrSpace.ppuReg, this.drawCallback)

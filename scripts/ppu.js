@@ -178,7 +178,6 @@ class PPU {
         const patternHighStartAddr = patternLowStartAddr + 8
 
         // 获取调色盘中的颜色
-        const bgPaletteStartAddr = 0x3f00
         const pixels = new Uint8Array(8 * 8)
         let pixelIdx = 0
         for (let row = 0; row < 8; row++) {
@@ -191,7 +190,7 @@ class PPU {
                 // whether universal background or not
                 const paletteIdx = paletteIdxFromPatt ? (paletteIdxFromAttr | paletteIdxFromPatt) : 0
 
-                pixels[pixelIdx++] = this.addrSpace.read(bgPaletteStartAddr + paletteIdx)
+                pixels[pixelIdx++] = paletteIdx
                 // const rgbaColor = plaColor2RGBAColor[palColor]
                 // pixels.push(rgbaColor)
             }  // for colomn
@@ -204,7 +203,6 @@ class PPU {
     }
 
     fillSpriteBlockPixels(pixels, pixelIdx, palHigh, patternLowStartAddr, patternHighStartAddr) {
-        const spPaletteStartAddr = 0x3f10
         for (let row = 0; row < 8; row++) {
             const lowPatternByte = this.addrSpace.read(patternLowStartAddr + row)
             const highPatternByte = this.addrSpace.read(patternHighStartAddr + row) << 1
@@ -214,10 +212,10 @@ class PPU {
                 const palLow = idxBit1 | idxBit0
                 // whether transprant or not
                 if (palLow) {
-                    const paletteIdx = palHigh | palLow
-                    pixels[pixelIdx++] = this.addrSpace.read(spPaletteStartAddr + paletteIdx)
+                    const paletteIdx = 0x10 | palHigh | palLow
+                    pixels[pixelIdx++] = paletteIdx
                 } else {
-                    pixels[pixelIdx++] = 0x40 // 0x40 is out of possible color, used for further transparent process
+                    pixels[pixelIdx++] = 0x20
                 }
             }  // for colomn
         }  // for row
@@ -282,7 +280,7 @@ class PPU {
         if (!isSp0) {
             for (let r = 0; r < height; r++) {
                 for (let c = 0; c < 8; c++, bIdx++) {
-                    if (blkPixels[bIdx] < 0x40) continue
+                    if (blkPixels[bIdx] < 0x20) continue
                     const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
                     if (pIdx < 0) continue
                     blkPixels[bIdx] = pixels[pIdx]
@@ -291,13 +289,12 @@ class PPU {
             return false
         } else {
             let hit = false
-            const bgColor = this.addrSpace.read(0x3f00)
             for (let r = 0; r < height; r++) {
                 for (let c = 0; c < 8; c++, bIdx++) {
                     const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
                     if (pIdx < 0) continue
-                    if (blkPixels[bIdx] < 0x40 ) {
-                        if (!hit && pixels[pIdx] != bgColor ) { hit = true }
+                    if (blkPixels[bIdx] < 0x20) {
+                        if (!hit && pixels[pIdx]) { hit = true }
                         continue
                     }
                     blkPixels[bIdx] = pixels[pIdx]
@@ -309,13 +306,12 @@ class PPU {
 
     makeUnderBg(blkPixels, row, colomn, height) {
         const { pixels } = this.drawCallback
-        const bgColor = this.addrSpace.read(0x3f00)
         let bIdx = 0
         for (let r = 0; r < height; r++) {
             for (let c = 0; c < 8; c++, bIdx++) {
                 const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
                 if (pIdx < 0) continue
-                if (pixels[pIdx] !== bgColor || blkPixels[bIdx] > 0x3f) {
+                if (pixels[pIdx] || blkPixels[bIdx] > 0x1f) {
                     blkPixels[bIdx] = pixels[pIdx]
                 }
             }
