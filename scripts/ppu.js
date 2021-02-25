@@ -1,27 +1,3 @@
-
-// const plaColor2RGBAColor = [
-//     [0x7F, 0x7F, 0x7F, 0xFF], [0x20, 0x00, 0xB0, 0xFF], [0x28, 0x00, 0xB8, 0xFF], [0x60, 0x10, 0xA0, 0xFF],
-//     [0x98, 0x20, 0x78, 0xFF], [0xB0, 0x10, 0x30, 0xFF], [0xA0, 0x30, 0x00, 0xFF], [0x78, 0x40, 0x00, 0xFF],
-//     [0x48, 0x58, 0x00, 0xFF], [0x38, 0x68, 0x00, 0xFF], [0x38, 0x6C, 0x00, 0xFF], [0x30, 0x60, 0x40, 0xFF],
-//     [0x30, 0x50, 0x80, 0xFF], [0x00, 0x00, 0x00, 0xFF], [0x00, 0x00, 0x00, 0xFF], [0x00, 0x00, 0x00, 0xFF],
-
-//     [0xBC, 0xBC, 0xBC, 0xFF], [0x40, 0x60, 0xF8, 0xFF], [0x40, 0x40, 0xFF, 0xFF], [0x90, 0x40, 0xF0, 0xFF],
-//     [0xD8, 0x40, 0xC0, 0xFF], [0xD8, 0x40, 0x60, 0xFF], [0xE0, 0x50, 0x00, 0xFF], [0xC0, 0x70, 0x00, 0xFF],
-//     [0x88, 0x88, 0x00, 0xFF], [0x50, 0xA0, 0x00, 0xFF], [0x48, 0xA8, 0x10, 0xFF], [0x48, 0xA0, 0x68, 0xFF],
-//     [0x40, 0x90, 0xC0, 0xFF], [0x00, 0x00, 0x00, 0xFF], [0x00, 0x00, 0x00, 0xFF], [0x00, 0x00, 0x00, 0xFF],
-
-//     [0xFF, 0xFF, 0xFF, 0xFF], [0x60, 0xA0, 0xFF, 0xFF], [0x50, 0x80, 0xFF, 0xFF], [0xA0, 0x70, 0xFF, 0xFF],
-//     [0xF0, 0x60, 0xFF, 0xFF], [0xFF, 0x60, 0xB0, 0xFF], [0xFF, 0x78, 0x30, 0xFF], [0xFF, 0xA0, 0x00, 0xFF],
-//     [0xE8, 0xD0, 0x20, 0xFF], [0x98, 0xE8, 0x00, 0xFF], [0x70, 0xF0, 0x40, 0xFF], [0x70, 0xE0, 0x90, 0xFF],
-//     [0x60, 0xD0, 0xE0, 0xFF], [0x60, 0x60, 0x60, 0xFF], [0x00, 0x00, 0x00, 0xFF], [0x00, 0x00, 0x00, 0xFF],
-
-//     [0xFF, 0xFF, 0xFF, 0xFF], [0x90, 0xD0, 0xFF, 0xFF], [0xA0, 0xB8, 0xFF, 0xFF], [0xC0, 0xB0, 0xFF, 0xFF],
-//     [0xE0, 0xB0, 0xFF, 0xFF], [0xFF, 0xB8, 0xE8, 0xFF], [0xFF, 0xC8, 0xB8, 0xFF], [0xFF, 0xD8, 0xA0, 0xFF],
-//     [0xFF, 0xF0, 0x90, 0xFF], [0xC8, 0xF0, 0x80, 0xFF], [0xA0, 0xF0, 0xA0, 0xFF], [0xA0, 0xFF, 0xC8, 0xFF],
-//     [0xA0, 0xFF, 0xF0, 0xFF], [0xA0, 0xA0, 0xA0, 0xFF], [0x00, 0x00, 0x00, 0xFF], [0x00, 0x00, 0x00, 0xFF]
-// ]
-
-
 class PPU {
     constructor(addrSpace, oamAddrSpace, ppuReg, drawCallback) {
         this.addrSpace = addrSpace // a.k.a vram
@@ -74,11 +50,6 @@ class PPU {
         // clear vblank start bit
         this.clearVBlank()
     }
-
-    // oamDataRead(byte) {
-    //     // increase oamAddr
-    //     this.oamPointer = (this.oamPointer + 1) & 0xff
-    // }
 
     ppuDataRead(byte) {
         // increase ppuAddr
@@ -146,60 +117,31 @@ class PPU {
         this.ppuStatus &= ~PPU.VBLANK_START
     }
 
-    getBgPixelsByBlk(rowOfBlk, colomnOfBlk, nTbNo) {
-        const nameTableStartAddr = 0x2000 + nTbNo * 0x400
-        // 获取属性
-        // 当前8x8像素块的行列号
-        // const rowOfBlk = blkNo >> 5  // integerly minus 32
-        // const colomnOfBlk = blkNo % 32
-        // 当前8x8像素块所在的32x32像素块的行列号, AttrBlk即为32x32像素块
-        const rowOfAttrBlk = rowOfBlk >> 3
-        const colomnOfAttrBlk = colomnOfBlk % 8
-        // 获取属性表对应字节 
-        const attributeIdx = rowOfAttrBlk * 8 + colomnOfAttrBlk
-        const attributeStartAddr = nameTableStartAddr + 960
-        // Todo:// 直接访问VRAM，不通过read方法
-        const attribute = this.addrSpace.read(attributeStartAddr + attributeIdx)
-        // 获取属性表对应字节对应两位
-        const firstBlkRowOfAttrBlk = rowOfAttrBlk * 4
-        const firstBlkColomnOfAttrBlk = colomnOfAttrBlk * 4
-        // 调色盘索引的高两位
-        let paletteIdxFromAttr = attribute
-        paletteIdxFromAttr >>= rowOfBlk - firstBlkRowOfAttrBlk < 2 ? 0 : 4
-        paletteIdxFromAttr >>= colomnOfBlk - firstBlkColomnOfAttrBlk < 2 ? 0 : 2
-        paletteIdxFromAttr = (paletteIdxFromAttr & 0x3) << 2
+    getBgPixel(row, colomn, nameTableAddr, patternTableAddr) {
+        // low 2 bits in from namet able
+        const nameOffset = (row >> 3) * 32 + (colomn >> 3)
+        const name = this.addrSpace.read(nameTableAddr + nameOffset)
 
-        // 获取图案
-        const blkNo = rowOfBlk * 32 + colomnOfBlk
-        const patternTableStartAddr = this.ppuCtrl & PPU.BG_PATTERN_TABLE ? 0x1000 : 0x0000
-        const patternIdx = this.addrSpace.read(nameTableStartAddr + blkNo)
-        // low 2 bits of palette idx
-        const patternLowStartAddr = patternTableStartAddr + 16 * patternIdx
-        const patternHighStartAddr = patternLowStartAddr + 8
+        // pattern byte for current row
+        const patternByteBit0Addr = patternTableAddr + name * 16 + (row & 0x7)
+        const patternByteBit1Addr = patternByteBit0Addr + 8
 
-        // 获取调色盘中的颜色
-        const pixels = new Uint8Array(8 * 8)
-        let pixelIdx = 0
-        for (let row = 0; row < 8; row++) {
-            const lowPatternByte = this.addrSpace.read(patternLowStartAddr + row)
-            const highPatternByte = this.addrSpace.read(patternHighStartAddr + row) << 1
-            for (let colomn = 7; colomn >= 0; colomn--) {
-                const idxBit0 = (lowPatternByte >> colomn) & 1
-                const idxBit1 = (highPatternByte >> colomn) & 2
-                const paletteIdxFromPatt = idxBit1 | idxBit0
-                // whether universal background or not
-                const paletteIdx = paletteIdxFromPatt ? (paletteIdxFromAttr | paletteIdxFromPatt) : 0
+        const shift = ~colomn & 0x7
+        const mask = 1 << shift
+        const patternBit0 = (this.addrSpace.read(patternByteBit0Addr) & mask) >> shift
+        const patternBit1 = (this.addrSpace.read(patternByteBit1Addr) & mask) >> shift << 1
+        const paletteLow = patternBit1 | patternBit0
 
-                pixels[pixelIdx++] = paletteIdx
-                // const rgbaColor = plaColor2RGBAColor[palColor]
-                // pixels.push(rgbaColor)
-            }  // for colomn
-        }  // for row
-        return pixels
-    }
+        if (!paletteLow) return paletteLow
 
-    getBgPixel(row, colomn) {
-        // Todo: 
+        // high 2 bits from attribute table
+        const attrTableAddr = nameTableAddr + 960
+        const attrOffset = (row >> 5) * 8 + (colomn >> 5)
+        const attr = this.addrSpace.read(attrTableAddr + attrOffset)
+        const offset = ((row & 0x10) >> 2) | ((colomn & 0x10) >> 3)
+        const paletteHigh = (attr & (3 << offset)) >> offset << 2
+
+        return paletteHigh | paletteLow
     }
 
     fillSpriteBlockPixels(pixels, pixelIdx, palHigh, patternLowStartAddr, patternHighStartAddr) {
@@ -321,13 +263,12 @@ class PPU {
     render() {
         const currPPUMask = this.ppuMask // | 0xff // Todo: enable ppuMask
         if (currPPUMask & PPU.SHOW_BG) {
-            // draw background
-            // 32x0 blocks, each block is made of 8x8 pixels
-            for (let row = 0; row < 30; row++) {
-                for (let colomn = 0; colomn < 32; colomn++) {
-                    const pixels = this.getBgPixelsByBlk(row, colomn, 0)
-                    // Todo: 更改渲染回调方式为直接写入位图
-                    this.drawCallback.drawBgBlock(row * 8, colomn * 8, 8, 8, pixels)
+            for (let row = 0; row < 240; row++) {
+                const scanline = this.drawCallback.scanlines[row]
+                const nameTableAddr = 0x2000 + ((this.ppuCtrl & PPU.BASE_NAME_TABLE) << 10)
+                const patternTableAddr = (this.ppuCtrl & PPU.BG_PATTERN_TABLE) << 8
+                for (let colomn = 0; colomn < 256; colomn++) {
+                    scanline[colomn] = this.getBgPixel(row, colomn, nameTableAddr, patternTableAddr)
                 }
             }
         }
@@ -351,13 +292,6 @@ class PPU {
                 const row = oam[i + 0] + 1
                 const colomn = oam[i + 3]
 
-                // Todo: move this to outside of the loop
-                // const keepIntact = {
-                //     pixels: this.drawCallback.pixels,
-                //     bmpWidth: this.drawCallback.bmpWidth,
-                //     startPoint: row * this.drawCallback.bmpWidth + colomn
-                // }
-
                 let pixels
                 try {
                     if (height === 8) {
@@ -379,6 +313,7 @@ class PPU {
 }  // ppu
 
 // $2000
+PPU.BASE_NAME_TABLE = 0x03
 PPU.VRAM_ADDR_INCR = 0x04
 PPU.SP_PATTERN_TABLE = 0x08
 PPU.BG_PATTERN_TABLE = 0x10

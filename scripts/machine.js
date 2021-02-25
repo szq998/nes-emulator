@@ -30,11 +30,19 @@ const fcColorPalette = new Uint32Array([
 class Machine {
   constructor(logger = null) {
     this.bitmap = new BitMap8Bit(256, 240, 32)
+    const pixels = this.bitmap.pixels
+    const scanlines = Array(240)
+    for (let i = 0; i < scanlines.length; i++) {
+      scanlines[i] = new Uint8Array(pixels.buffer, pixels.byteOffset + i * this.bitmap.widthWithPad, 256)
+    }
+
     this.drawCallback = {
       drawBgBlock: this.bitmap.setPixelBlock.bind(this.bitmap),
-      pixels: this.bitmap.pixels,
-      getIdxByRowColomn: this.bitmap.getIdxByRowColomn.bind(this.bitmap)
+      pixels: pixels,
+      getIdxByRowColomn: this.bitmap.getIdxByRowColomn.bind(this.bitmap),
+      scanlines: scanlines
     }
+
 
     const paletteWrited = (idx, bgrIdx) => this.bitmap.palette[idx] = fcColorPalette[bgrIdx]
 

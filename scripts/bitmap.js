@@ -40,13 +40,14 @@ class BitMap8Bit {
         const bfSize = bfOffBits + biSizeImage
         // 4 byte align for uint32 write of palette
         this.dataAligned = new Uint8Array(bfSize + 2)
-        this.data = new Uint8Array(this.dataAligned.buffer, 2)
-        this.pixels = new Uint8Array(this.data.buffer, bfOffBits + 2)
+        this.alignOffset = 2
+        this.data = new Uint8Array(this.dataAligned.buffer, this.alignOffset)
+        this.pixels = new Uint8Array(this.data.buffer, bfOffBits + this.alignOffset)
         this.dataView = new DataView(this.data.buffer)
-        this.palette = new Uint32Array(this.dataAligned.buffer, headerSize + 2, paletteLen)
+        this.palette = new Uint32Array(this.dataAligned.buffer, headerSize + this.alignOffset, paletteLen)
         // set Header 
         for (const p in header) {
-            header[p][0] += 2
+            header[p][0] += this.alignOffset
         }
         this.setHeaderValue(0x4d42, ...header.bfType)
         this.setHeaderValue(bfSize, ...header.bfSize)
