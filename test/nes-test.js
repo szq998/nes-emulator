@@ -306,7 +306,7 @@ function getOperateButton() {
         let num = Number($("operateTimes").text)
         $("operateTimes").blur()
         $cache.setAsync({ key: "opTimes", value: num })
-        if (!num || num < 1000) {  num = 1000 }
+        if (!num || num < 1000) { num = 1000 }
 
         (function longOperate() {
           try {
@@ -677,10 +677,38 @@ function getControllerBtn(name, layout) {
   }
 }
 
+function controllerBtnPressWithAutoRelease(key, time = 40) {
+  fc.controllerPressed(0, key)
+  setTimeout(() => fc.controllerReleased(0, key), time)
+}
+
+function getKeyCommands() {
+  const key2key = {
+    "w": "up",
+    "a": "left",
+    "s": "down",
+    "d": "right",
+    "f": "select",
+    "h": "start",
+    "j": "b",
+    "k": "a"
+  }
+
+  const keyCommands = []
+  for (const key in key2key) {
+    keyCommands.push({
+      input: key,
+      handler: () => controllerBtnPressWithAutoRelease(key2key[key])
+    })
+  }
+  return keyCommands
+}
+
 function nesTest() {
   $ui.render({
     props: {
-      title: "Nes Test"
+      title: "Nes Test",
+      keyCommands: getKeyCommands()
     },
     views: [
       getRamList(),
