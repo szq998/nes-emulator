@@ -15,6 +15,11 @@ class PPU {
         this.ppuAddrStep = 0
 
         this.bufferedByte
+        // for fast vram fetch
+        // Todo: support more cached name/attr tables instead of one
+        this.cachedNames
+        this.cachedPatternBytes
+        this.cachedAttrs
     }
 
     // alias for ppuReg
@@ -120,16 +125,21 @@ class PPU {
     getBgPixel(row, colomn, nameTableAddr, patternTableAddr) {
         // low 2 bits in from namet able
         const nameOffset = (row >> 3) * 32 + (colomn >> 3)
-        const name = this.addrSpace.read(nameTableAddr + nameOffset)
+        const cachedName = this.cachedNames[nameOffset]
+        const name = typeof cachedName === "undefined" ? this.cachedNames[nameOffset] = this.addrSpace.read(nameTableAddr + nameOffset) : cachedName
 
         // pattern byte for current row
-        const patternByteBit0Addr = patternTableAddr + name * 16 + (row & 0x7)
-        const patternByteBit1Addr = patternByteBit0Addr + 8
+        const patternByte0Addr = patternTableAddr + name * 16 + (row & 0x7)
+        const patternByte1Addr = patternByte0Addr + 8
 
+        const cachedPatternByte0 = this.cachedPatternBytes[patternByte0Addr]
+        const cachedPatternByte1 = this.cachedPatternBytes[patternByte1Addr]
+        const patternByte0 = typeof cachedPatternByte0 === "undefined" ? this.cachedPatternBytes[patternByte0Addr] = this.addrSpace.read(patternByte0Addr) : cachedPatternByte0
+        const patternByte1 = typeof cachedPatternByte1 === "undefined" ? this.cachedPatternBytes[patternByte1Addr] = this.addrSpace.read(patternByte1Addr) : cachedPatternByte1
         const shift = ~colomn & 0x7
         const mask = 1 << shift
-        const patternBit0 = (this.addrSpace.read(patternByteBit0Addr) & mask) >> shift
-        const patternBit1 = (this.addrSpace.read(patternByteBit1Addr) & mask) >> shift << 1
+        const patternBit0 = (patternByte0 & mask) >> shift
+        const patternBit1 = (patternByte1 & mask) >> shift << 1
         const paletteLow = patternBit1 | patternBit0
 
         if (!paletteLow) return paletteLow
@@ -137,7 +147,9 @@ class PPU {
         // high 2 bits from attribute table
         const attrTableAddr = nameTableAddr + 960
         const attrOffset = (row >> 5) * 8 + (colomn >> 5)
-        const attr = this.addrSpace.read(attrTableAddr + attrOffset)
+        const cachedAttr = this.cachedAttrs[attrOffset]
+        const attr = typeof cachedAttr === "undefined" ? this.cachedAttrs[attrOffset] = this.addrSpace.read(attrTableAddr + attrOffset) : cachedAttr
+
         const offset = ((row & 0x10) >> 2) | ((colomn & 0x10) >> 3)
         const paletteHigh = (attr & (3 << offset)) >> offset << 2
 
@@ -263,6 +275,9 @@ class PPU {
     render() {
         const currPPUMask = this.ppuMask // | 0xff // Todo: enable ppuMask
         if (currPPUMask & PPU.SHOW_BG) {
+            this.cachedNames = Array(960)
+            this.cachedPatternBytes = Array(0x1000)
+            this.cachedAttrs = Array(64)
             for (let row = 0; row < 240; row++) {
                 const scanline = this.drawCallback.scanlines[row]
                 const nameTableAddr = 0x2000 + ((this.ppuCtrl & PPU.BASE_NAME_TABLE) << 10)
