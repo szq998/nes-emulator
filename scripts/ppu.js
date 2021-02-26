@@ -10,7 +10,7 @@ class PPU {
 
         // ppu internal registers
         this.ireg = {
-            // v: 0,  // 15 bits current vram address (actually only 14 bits for vram address)
+            v: 0,  // 15 bits current vram address (actually only 14 bits for vram address)
             t: 0,  // 15 bits temporary vram address & top left screen tile address
             x: 0,  // 3 bits fine x scroll
             w: 0   // 1 bit write toggle for $2005 & $2006
@@ -18,8 +18,6 @@ class PPU {
 
         // pointer from oamAddr
         this.oamPointer = 0  // Todo: is the initial value right?
-        // pointer from ppuAddr
-        this.vramPointer
 
         this.bufferedByte
         // for fast vram fetch
@@ -108,13 +106,11 @@ class PPU {
     ppuAddrWrited(byte) {
         if (!this.ireg.w) {
             // 6 higher bits
-            // this.vramPointer = (byte & 0x003f) << 8
             this.ireg.t = this.ireg.t & 0xff | ((byte & 0x3f) << 8)
             this.ireg.t &= 0x3fff
             this.ireg.w = 1
         } else {
             // 8 lower bits
-            // this.vramPointer |= byte
             this.ireg.t = this.ireg.t & 0x7f00 | byte
             this.ireg.v = this.ireg.t
             this.ireg.w = 0
