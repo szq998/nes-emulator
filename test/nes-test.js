@@ -11,19 +11,6 @@ let renderCavOc
 let autoVB = true
 let autoRd = true
 
-// const ROMPATH = "assets";
-// const ROMPATH = "./assets/BOMBMAN.NES";
-// const ROMPATH = "./assets/SMB.nes";
-// const ROMPATH = "./assets/color_test.nes";
-// const ROMPATH = "./assets/basics.nes";
-// const ROMPATH = "./assets/alignment.nes";
-// const ROMPATH = "./assets/corners.nes";
-// const ROMPATH = "./assets/flip.nes";
-// const ROMPATH = "./assets/left_clip.nes";
-// const ROMPATH = "./assets/edge_timing.nes";
-// const romFile = $file.read(ROMPATH);
-// const romString = romFile.toString();
-
 const logger = {
   cpu: cpuLog,
   cpuAddrSpace: cpuAddrSpaceLog,
@@ -31,8 +18,6 @@ const logger = {
   oamAddrSpace: oamAddrSpaceLog
 }
 const fc = new Machine(logger)
-// fc.loadRom(romString)
-// console.log(fc.gameRom.header)
 
 function operateBtnTapped(times) {
   if (autoVB) {
@@ -59,7 +44,7 @@ function operateBtnTapped(times) {
     renderCavOc.$setNeedsDisplay()
     ppuTime = Date.now() - ppuTimeStart
   }
-  console.log(`cpu time: ${cpuTime}, ppu time: ${ppuTime}`)
+  console.log(`#${operateWithLog.lino - 1} cpu time: ${cpuTime}, ppu time: ${ppuTime}`)
 }
 
 function resetLog() {
@@ -677,7 +662,7 @@ function getRenderToggle() {
   }
 }
 
-function getKey(name, layout) {
+function getControllerBtn(name, layout) {
   return {
     type: "button",
     props: {
@@ -722,42 +707,42 @@ function nesTest() {
       getRenderCanvas(),
       getRenderToggle(),
 
-      getKey("right", (make, view) => {
+      getControllerBtn("right", (make, view) => {
         make.size.equalTo($size(80, 50))
         make.right.equalTo($("renderCavs").left).offset(-64 - 10)
         make.bottom.equalTo($("renderCavs")).offset(60 - 15)
       }),
-      getKey("up", (make, view) => {
+      getControllerBtn("up", (make, view) => {
         make.size.equalTo(view.prev)
         make.right.equalTo(view.prev.left)
         make.bottom.equalTo(view.prev.top)
       }),
-      getKey("down", (make, view) => {
+      getControllerBtn("down", (make, view) => {
         make.size.equalTo(view.prev)
         make.right.equalTo(view.prev)
         make.top.equalTo(view.prev.prev.bottom)
       }),
-      getKey("left", (make, view) => {
+      getControllerBtn("left", (make, view) => {
         make.size.equalTo(view.prev)
         make.right.equalTo(view.prev.left)
         make.bottom.equalTo(view.prev.top)
       }),
-      getKey("select", (make, view) => {
+      getControllerBtn("select", (make, view) => {
         make.size.equalTo(view.prev)
         make.top.equalTo($("renderCavs").bottom).offset(60 + 10)
         make.centerX.equalTo(view.super).offset(-50)
       }),
-      getKey("start", (make, view) => {
+      getControllerBtn("start", (make, view) => {
         make.size.equalTo(view.prev)
         make.top.equalTo(view.prev)
         make.centerX.equalTo(view.super).offset(50)
       }),
-      getKey("a", (make, view) => {
+      getControllerBtn("a", (make, view) => {
         make.size.equalTo(view.prev)
         make.left.equalTo($("renderCavs").right).offset(64 + 10)
         make.centerY.equalTo($("rightKey")).offset(-30)
       }),
-      getKey("b", (make, view) => {
+      getControllerBtn("b", (make, view) => {
         make.size.equalTo(view.prev)
         make.left.equalTo(view.prev)
         make.centerY.equalTo($("rightKey")).offset(30)
