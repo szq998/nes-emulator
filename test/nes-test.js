@@ -606,7 +606,7 @@ function getRenderCanvas() {
     },
     layout: (make, view) => {
       make.size.equalTo($size(256, 240))
-      make.centerX.equalTo(view.super)
+      make.centerX.equalTo(view.super).offset(43)
       make.top.equalTo(view.super).offset(60)
     },
     events: {
@@ -708,7 +708,7 @@ function nesTest() {
       getRenderToggle(),
 
       getControllerBtn("right", (make, view) => {
-        make.size.equalTo($size(80, 50))
+        make.size.equalTo($size(55, 50))
         make.right.equalTo($("renderCavs").left).offset(-64 - 10)
         make.bottom.equalTo($("renderCavs")).offset(60 - 15)
       }),
@@ -728,14 +728,14 @@ function nesTest() {
         make.bottom.equalTo(view.prev.top)
       }),
       getControllerBtn("select", (make, view) => {
-        make.size.equalTo(view.prev)
+        make.size.equalTo($size(80, 50))
         make.top.equalTo($("renderCavs").bottom).offset(60 + 10)
-        make.centerX.equalTo(view.super).offset(-50)
+        make.centerX.equalTo($("renderCavs")).offset(-50)
       }),
       getControllerBtn("start", (make, view) => {
         make.size.equalTo(view.prev)
         make.top.equalTo(view.prev)
-        make.centerX.equalTo(view.super).offset(50)
+        make.centerX.equalTo($("renderCavs")).offset(50)
       }),
       getControllerBtn("a", (make, view) => {
         make.size.equalTo(view.prev)
