@@ -4,15 +4,22 @@ class PPU {
         this.oamAddrSpace = oamAddrSpace
         this.ppuReg = ppuReg
         this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead.bind(this), null, null/*this.oamDataRead.bind(this)*/, null, null, this.ppuDataRead.bind(this)]
-        this.ppuReg.regWritedCallbacks = [null, null, null, this.oamAddrWrited.bind(this), this.oamDataWrited.bind(this), null, this.ppuAddrWrited.bind(this), this.ppuDataWrited.bind(this), this.oamDMAWrited.bind(this)]
+        this.ppuReg.regWritedCallbacks = [this.ppuCtrlWrited.bind(this), null, null, this.oamAddrWrited.bind(this), this.oamDataWrited.bind(this), this.ppuScrollWrited.bind(this), this.ppuAddrWrited.bind(this), this.ppuDataWrited.bind(this), this.oamDMAWrited.bind(this)]
 
         this.drawCallback = drawCallback
+
+        // ppu internal registers
+        this.ireg = {
+            // v: 0,  // 15 bits current vram address (actually only 14 bits for vram address)
+            t: 0,  // 15 bits temporary vram address & top left screen tile address
+            x: 0,  // 3 bits fine x scroll
+            w: 0   // 1 bit write toggle for $2005 & $2006
+        }
 
         // pointer from oamAddr
         this.oamPointer = 0  // Todo: is the initial value right?
         // pointer from ppuAddr
         this.vramPointer
-        this.ppuAddrStep = 0
 
         this.bufferedByte
         // for fast vram fetch
@@ -20,6 +27,8 @@ class PPU {
         this.cachedNames
         this.cachedPatternBytes
         this.cachedAttrs
+
+        this.isRendering = false
     }
 
     // alias for ppuReg
@@ -54,14 +63,21 @@ class PPU {
     ppuStatusRead(byte) {
         // clear vblank start bit
         this.clearVBlank()
+        // reset the write toggle of vramPointer
+        this.ireg.w = 0
     }
 
     ppuDataRead(byte) {
         // increase ppuAddr
-        this.vramPointer += (this.ppuCtrl & PPU.VRAM_ADDR_INCR ? 32 : 1)
+        this.ireg.v += (this.ppuCtrl & PPU.VRAM_ADDR_INCR ? 32 : 1)
+        this.ireg.v &= 0x3fff
     }
 
     // callbacks when ppuReg writed
+    ppuCtrlWrited(byte) {
+        this.ireg.t = (this.ireg.t & ~PPU.IREG_NAME_TABLE & 0x7fff) | ((byte & PPU.BASE_NAME_TABLE) << 10)
+    }
+
     oamAddrWrited(byte) {
         // write to oamAddrSpace
         this.oamPointer = byte
@@ -77,24 +93,40 @@ class PPU {
         this.oamPointer = (this.oamPointer + 1) & 0xff
     }
 
+    ppuScrollWrited(byte) {
+        if (!this.ireg.w) {
+            this.ireg.t = (this.ireg.t & ~PPU.IREG_COARSE_X_SCROLL & 0x7fff) | ((byte & 0xf8) >> 3)
+            this.ireg.x = byte & 0x7
+            this.ireg.w = 1
+        } else {
+            this.ireg.t = (this.ireg.t & ~PPU.IREG_COARSE_Y_SCROLL & 0x7fff) | ((byte & 0xf8) << 2)
+            this.ireg.t = (this.ireg.t & ~PPU.IREG_FINE_Y_SCROLL & 0x7fff) | ((byte & 0x7) << 12)
+            this.ireg.w = 0
+        }
+    }
+
     ppuAddrWrited(byte) {
-        if (this.ppuAddrStep == 0) {
+        if (!this.ireg.w) {
             // 6 higher bits
-            this.vramPointer = (byte & 0x003f) << 8
-            this.ppuAddrStep++
+            // this.vramPointer = (byte & 0x003f) << 8
+            this.ireg.t = this.ireg.t & 0xff | ((byte & 0x3f) << 8)
+            this.ireg.t &= 0x3fff
+            this.ireg.w = 1
         } else {
             // 8 lower bits
-            this.vramPointer |= byte
-            this.ppuAddrStep = 0
+            // this.vramPointer |= byte
+            this.ireg.t = this.ireg.t & 0x7f00 | byte
+            this.ireg.v = this.ireg.t
+            this.ireg.w = 0
             // write to ppuReg
             // buffer mechanism
-            if (this.vramPointer < 0x3f00) {
+            if (this.ireg.v < 0x3f00) {
                 // only get last buffered data
-                this.ppuData = /*typeof this.bufferedByte === "undefined" ? 0:*/ this.bufferedByte
-                this.bufferedByte = this.addrSpace.read(this.vramPointer, false)
+                this.ppuData = this.bufferedByte
+                this.bufferedByte = this.addrSpace.read(this.ireg.v , false)
             } else {
                 // immediate update for palette data
-                this.bufferedByte = this.addrSpace.read(this.vramPointer, false)
+                this.bufferedByte = this.addrSpace.read(this.ireg.v , false)
                 this.ppuData = this.bufferedByte
             }
         }
@@ -102,9 +134,10 @@ class PPU {
 
     ppuDataWrited(byte) {
         // write to addrSpace
-        this.addrSpace.write(this.vramPointer, byte)
+        this.addrSpace.write(this.ireg.v, byte)
         // increase ppuAddr
-        this.vramPointer += (this.ppuCtrl & PPU.VRAM_ADDR_INCR ? 32 : 1)
+        this.ireg.v += (this.ppuCtrl & PPU.VRAM_ADDR_INCR ? 32 : 1)
+        this.ireg.v &= 0x3fff
     }
 
     oamDMAWrited(byte) {
@@ -339,5 +372,11 @@ PPU.SHOW_BG = 0x08
 PPU.SHOW_SP = 0x10
 // $2002
 PPU.VBLANK_START = 0x80
+// ppu internal reg
+PPU.IREG_COARSE_X_SCROLL = 0x001f
+PPU.IREG_COARSE_Y_SCROLL = 0x03e0
+PPU.IREG_NAME_TABLE = 0x0c00
+PPU.IREG_FINE_Y_SCROLL = 0x7000
+
 
 module.exports = PPU
