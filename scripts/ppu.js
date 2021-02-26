@@ -3,7 +3,7 @@ class PPU {
         this.addrSpace = addrSpace // a.k.a vram
         this.oamAddrSpace = oamAddrSpace
         this.ppuReg = ppuReg
-        this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead.bind(this), null, null/*this.oamDataRead.bind(this)*/, null, null, this.ppuDataRead.bind(this)]
+        this.ppuReg.regReadCallbacks = [null, null, this.ppuStatusRead.bind(this), null, null, null, null, this.ppuDataRead.bind(this)]
         this.ppuReg.regWritedCallbacks = [this.ppuCtrlWrited.bind(this), null, null, this.oamAddrWrited.bind(this), this.oamDataWrited.bind(this), this.ppuScrollWrited.bind(this), this.ppuAddrWrited.bind(this), this.ppuDataWrited.bind(this), this.oamDMAWrited.bind(this)]
 
         this.drawCallback = drawCallback
@@ -123,10 +123,10 @@ class PPU {
             if (this.ireg.v < 0x3f00) {
                 // only get last buffered data
                 this.ppuData = this.bufferedByte
-                this.bufferedByte = this.addrSpace.read(this.ireg.v , false)
+                this.bufferedByte = this.addrSpace.read(this.ireg.v, false)
             } else {
                 // immediate update for palette data
-                this.bufferedByte = this.addrSpace.read(this.ireg.v , false)
+                this.bufferedByte = this.addrSpace.read(this.ireg.v, false)
                 this.ppuData = this.bufferedByte
             }
         }
@@ -305,20 +305,112 @@ class PPU {
         }
     }
 
+    updateHorizontalV() {
+        // copy horizontal related bits t to v (Todo: only when render enabled)
+        this.ireg.v = (this.ireg.v & 0x7be0) | (this.ireg.t & 0x041f)
+    }
+
+    updateVerticalV() {
+        // copy vertical related bits t to v (Todo: only when render enabled)
+        this.ireg.v = (this.ireg.v & 0x041f) | (this.ireg.t & 0x7be0)
+    }
+
+    coarseXIncrement() {
+        if ((this.ireg.v & 0x001f) === 31) {
+            this.ireg.v &= ~0x001f
+            this.ireg.v ^= 0x0400
+        } else {
+            this.ireg.v++
+        }
+    }
+
+    YIncrement() {
+        // Y inceament (Todo: only when render enabled)
+        if ((this.ireg.v & 0x7000) !== 0x7000) { this.ireg.v += 0x1000 }  // if fine Y < 7, increment fine Y
+        else {
+            this.ireg.v &= ~0x7000                                        // fine Y = 0
+            let y = (this.ireg.v & 0x03E0) >> 5                           // let y = coarse Y
+            if (y === 29) {
+                y = 0                                                     // coarse Y = 0
+                this.ireg.v ^= 0x0800                                     // switch vertical nametable
+            }
+            else if (y === 31) { y = 0 }                                  // coarse Y = 0, nametable not switched
+            else { y++ }                                                  // increment coarse Y
+
+            this.ireg.v = (this.ireg.v & ~0x03E0) | (y << 5)              // put coarse Y back into v 
+        }
+    }
+
+    getNextPattern(patternTableAddr, row) {
+        const offset = this.ireg.v & 0x0fff
+        const nameAddr = 0x2000 | offset
+        const cachedName = this.cachedNames[offset]
+        const name = typeof cachedName === "undefined" ? this.cachedNames[offset] = this.addrSpace.read(nameAddr) : cachedName
+        // pattern byte for current row
+        const patternByte0Addr = patternTableAddr + name * 16 + (row & 0x7)
+        const patternByte1Addr = patternByte0Addr + 8
+        const cachedPatternByte0 = this.cachedPatternBytes[patternByte0Addr]
+        const cachedPatternByte1 = this.cachedPatternBytes[patternByte1Addr]
+        const patternByte0 = typeof cachedPatternByte0 === "undefined" ? this.cachedPatternBytes[patternByte0Addr] = this.addrSpace.read(patternByte0Addr) : cachedPatternByte0
+        const patternByte1 = typeof cachedPatternByte1 === "undefined" ? this.cachedPatternBytes[patternByte1Addr] = this.addrSpace.read(patternByte1Addr) : cachedPatternByte1
+        return [patternByte1, patternByte0]
+    }
+
     render() {
         const currPPUMask = this.ppuMask // | 0xff // Todo: enable ppuMask
         if (currPPUMask & PPU.SHOW_BG) {
-            this.cachedNames = Array(960)
+            // a pre-render scanline
+            this.updateVerticalV()
+
+            this.cachedNames = Array(1024 * 4)
+            this.cachedAttrs = this.cachedNames
             this.cachedPatternBytes = Array(0x1000)
-            this.cachedAttrs = Array(64)
+            // 240 visiable scanline
             for (let row = 0; row < 240; row++) {
                 const scanline = this.drawCallback.scanlines[row]
-                const nameTableAddr = 0x2000 + ((this.ppuCtrl & PPU.BASE_NAME_TABLE) << 10)
+                // const nameTableAddr = 0x2000 + ((this.ppuCtrl & PPU.BASE_NAME_TABLE) << 10)
                 const patternTableAddr = (this.ppuCtrl & PPU.BG_PATTERN_TABLE) << 8
-                for (let colomn = 0; colomn < 256; colomn++) {
-                    scanline[colomn] = this.getBgPixel(row, colomn, nameTableAddr, patternTableAddr)
+
+                let [patternByte1, patternByte0] = this.getNextPattern(patternTableAddr, row)
+                for (let colomn = 0, needFetchPattern = false; colomn < 256; colomn++, needFetchPattern = !((colomn + this.ireg.x) % 8)) {
+                    if (needFetchPattern) {
+                        this.coarseXIncrement();
+                        [patternByte1, patternByte0] = this.getNextPattern(patternTableAddr, row)
+                    }
+
+                    const shift = ~(colomn + this.ireg.x) & 0x7
+                    const mask = 1 << shift
+                    const patternBit0 = (patternByte0 & mask) >> shift
+                    const patternBit1 = (patternByte1 & mask) >> shift << 1
+                    let color = patternBit1 | patternBit0
+
+                    if (color) {
+                        const attrAddr = 0x23c0 | (this.ireg.v & 0x0c00) | ((this.ireg.v >> 4) & 0x38) | ((this.ireg.v >> 2) & 0x07)
+                        const cacheIdx = attrAddr - 0x2000
+                        const cachedAttr = this.cachedAttrs[cacheIdx]
+                        const attr = typeof cachedAttr === "undefined" ? this.cachedAttrs[cacheIdx] = this.addrSpace.read(attrAddr) : cachedAttr
+                        const offset = ((row & 0x10) >> 2) | (((colomn + this.ireg.x) & 0x10) >> 3)
+
+                        color |= (attr & (3 << offset)) >> offset << 2
+                    }
+                    scanline[colomn] = color
+
+                    // scanline[colomn] = this.getBgPixel(row, colomn, nameTableAddr, patternTableAddr)
                 }
+                this.coarseXIncrement()
+                this.YIncrement()
+                this.updateHorizontalV()
             }
+
+            // a post-render scanline
+            // Todo: 
+
+            // vblank last for 20 scanline
+            // this.setVBlank(/* Todo: vblank callback */)
+            for (let i = 0; i < 20; i++) {
+
+            }
+            // this.clearVBlank()
         }
         if (currPPUMask & PPU.SHOW_SP) {
             // draw sprite
