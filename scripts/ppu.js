@@ -351,7 +351,7 @@ class PPU {
                 const pIdx = this.oamAddrSpace.mem[1]
                 const palHigh = (this.oamAddrSpace.mem[2] & 0x03) << 2
                 sp0Pixels = spHeight === 8 ? this.getSprite8Pixel(pIdx, palHigh, spPatternTableStartAddr) : this.getSprite16Pixel(pIdx, palHigh)
-                flipped && this.spriteFlip(flipped, pixels, spHeight)
+                flipped && this.spriteFlip(flipped, sp0Pixels, spHeight)
             }
 
             // a pre-render scanline
