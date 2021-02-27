@@ -79,8 +79,8 @@ function saveLog() {
   }
 }
 
-const to16pad4 = num => num.toString(16).toUpperCase().padStart(4, "0")
-const to16pad2 = num => num.toString(16).toUpperCase().padStart(2, "0")
+const to16pad4 = num => isNaN(num) ? num : num.toString(16).toUpperCase().padStart(4, "0")
+const to16pad2 = num => isNaN(num) ? num : num.toString(16).toUpperCase().padStart(2, "0")
 function operateWithLog() {
   const MAXUNSAVED = 100000
   if (log.length > MAXUNSAVED) {
@@ -108,16 +108,18 @@ function operateWithLog() {
   }
   // record ppu reg
   const ppu = fc.ppu
+  const pireg = fc.ppu.ireg
   const oamPointer = ppu.oamPointer
-  const vramPointer = ppu.vramPointer
   const bufferedByte = ppu.bufferedByte
   const pReg = fc.cpuAddrSpace.ppuReg.innerBytes
   try {
     currLogLine.push(
-      `ppuAddrStep:${ppu.ppuAddrStep} ` +
-      `oamPointer:${isNaN(oamPointer) ? oamPointer : to16pad2(oamPointer)} ` +
-      `vramPointer:${isNaN(vramPointer) ? vramPointer : to16pad4(vramPointer)} ` +
-      `bufferedByte:${isNaN(bufferedByte) ? bufferedByte : to16pad2(bufferedByte)}\n\t` +
+      `v:${to16pad4(pireg.v)} ` +
+      `t:${to16pad4(pireg.t)} ` +
+      `x:${to16pad2(pireg.x)} ` +
+      `w:${pireg.w} ` +
+      `oamPointer:${to16pad2(oamPointer)} ` +
+      `bufferedByte:${to16pad2(bufferedByte)}\n\t` +
       `0PPUCTRL:${to16pad2(pReg[0])} ` +
       `1PPUMASK:${to16pad2(pReg[1])} ` +
       `2PPUSTATUS:${to16pad2(pReg[2])} ` +
@@ -143,8 +145,8 @@ function operateWithLog() {
   }
   currLogLine.push(cpuLog.splice(0).join("  "))
   oamAddrSpaceLog.length && currLogLine.push(oamAddrSpaceLog.splice(0).join("\n\t"))
-  ppuAddrSpaceLog.length && currLogLine.push(ppuAddrSpaceLog.splice(0).join("\n\t"))
   cpuAddrSpaceLog.length && currLogLine.push(cpuAddrSpaceLog.splice(0).join("\n\t"))
+  ppuAddrSpaceLog.length && currLogLine.push(ppuAddrSpaceLog.splice(0).join("\n\t"))
   log.push(currLogLine.join("\n\n\t"))
   if (err !== null) throw err
 }
