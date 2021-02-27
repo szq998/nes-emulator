@@ -257,33 +257,16 @@ class PPU {
         }
     }
 
-    makeTransparent(blkPixels, row, colomn, height, isSp0) {
+    makeTransparent(blkPixels, row, colomn, height) {
         const { pixels } = this.drawCallback
         let bIdx = 0
-        if (!isSp0) {
-            for (let r = 0; r < height; r++) {
-                for (let c = 0; c < 8; c++, bIdx++) {
-                    if (blkPixels[bIdx] < 0x20) continue
-                    const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
-                    if (pIdx < 0) continue
-                    blkPixels[bIdx] = pixels[pIdx]
-                }
+        for (let r = 0; r < height; r++) {
+            for (let c = 0; c < 8; c++, bIdx++) {
+                if (blkPixels[bIdx] < 0x20) continue
+                const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
+                if (pIdx < 0) continue
+                blkPixels[bIdx] = pixels[pIdx]
             }
-            return false
-        } else {
-            let hit = false
-            for (let r = 0; r < height; r++) {
-                for (let c = 0; c < 8; c++, bIdx++) {
-                    const pIdx = this.drawCallback.getIdxByRowColomn(row + r, colomn + c)
-                    if (pIdx < 0) continue
-                    if (blkPixels[bIdx] < 0x20) {
-                        if (!hit && pixels[pIdx]) { hit = true }
-                        continue
-                    }
-                    blkPixels[bIdx] = pixels[pIdx]
-                }
-            }
-            return hit
         }
     }
 
@@ -354,15 +337,36 @@ class PPU {
 
     render() {
         const currPPUMask = this.ppuMask // | 0xff // Todo: enable ppuMask
+        const spPatternTableStartAddr = this.ppuCtrl & PPU.SP_PATTERN_TABLE ? 0x1000 : 0x0000
+        const spHeight = this.ppuCtrl & PPU.SP_HEIGHT ? 16 : 8 // determine sprite's height
         if (currPPUMask & PPU.SHOW_BG) {
+            // for sprite 0 hit
+            let shouldTestSp0 = true
+            const sp0Row = this.oamAddrSpace.mem[0]
+            const sp0Colomn = this.oamAddrSpace.mem[3]
+            let sp0Pixels
+            if (sp0Row >= 0xef) { shouldTestSp0 = false }
+            else {
+                const flipped = this.oamAddrSpace.mem[2] & 0xc0 >> 6
+                const pIdx = this.oamAddrSpace.mem[1]
+                const palHigh = (this.oamAddrSpace.mem[2] & 0x03) << 2
+                sp0Pixels = spHeight === 8 ? this.getSprite8Pixel(pIdx, palHigh, spPatternTableStartAddr) : this.getSprite16Pixel(pIdx, palHigh)
+                flipped && this.spriteFlip(flipped, pixels, spHeight)
+            }
+
             // a pre-render scanline
             this.updateVerticalV()
+            // clear last sp0 hit
+            this.ppuStatus &= (~PPU.SP0_HIT & 0xff)
 
             this.cachedNames = Array(1024 * 4)
             this.cachedAttrs = this.cachedNames
             this.cachedPatternBytes = Array(0x1000)
             // 240 visiable scanline
             for (let row = 0; row < 240; row++) {
+                // test sp0 hit
+                const currRowMayHit = shouldTestSp0 && row >= sp0Row && row < sp0Row + spHeight
+
                 const scanline = this.drawCallback.scanlines[row]
                 // const nameTableAddr = 0x2000 + ((this.ppuCtrl & PPU.BASE_NAME_TABLE) << 10)
                 const patternTableAddr = (this.ppuCtrl & PPU.BG_PATTERN_TABLE) << 8
@@ -391,9 +395,16 @@ class PPU {
                     }
                     scanline[colomn] = color
 
+                    // test sp0 hit
+                    if (currRowMayHit && shouldTestSp0 && color && colomn >= sp0Colomn && colomn < sp0Colomn + 8) {
+                        shouldTestSp0 = !sp0Pixels[(row - sp0Pixels) * 8 + colomn - sp0Colomn]
+                        // now, shouldTestSp0 is equivalent to "sp0NotHit"
+                        if (!shouldTestSp0) { this.ppuStatus |= PPU.SP0_HIT }
+                    }
+
                     // scanline[colomn] = this.getBgPixel(row, colomn, nameTableAddr, patternTableAddr)
                 }
-                this.coarseXIncrement()
+                // this.coarseXIncrement()
                 this.YIncrement()
                 this.updateHorizontalV()
             }
@@ -411,8 +422,6 @@ class PPU {
         if (currPPUMask & PPU.SHOW_SP) {
             // draw sprite
             // Todo: 
-            const patternTableStartAddr = this.ppuCtrl & PPU.SP_PATTERN_TABLE ? 0x1000 : 0x0000
-            const height = this.ppuCtrl & PPU.SP_HEIGHT ? 16 : 8 // determine sprite's height
             const oam = this.oamAddrSpace.mem  // direct access for performance
             for (let i = 0xfc /* from back to front */; i >= 0; i -= 4) {
                 // skip sprites out of boundary 
@@ -430,14 +439,14 @@ class PPU {
 
                 let pixels
                 try {
-                    if (height === 8) {
-                        pixels = this.getSprite8Pixel(pIdx, palHigh, patternTableStartAddr)
+                    if (spHeight === 8) {
+                        pixels = this.getSprite8Pixel(pIdx, palHigh, spPatternTableStartAddr)
                     } else {
                         pixels = this.getSprite16Pixel(pIdx, palHigh)
                     }
-                    flipped && this.spriteFlip(flipped, pixels, height)
-                    underBg ? this.makeUnderBg(pixels, row, colomn, height) : this.makeTransparent(pixels, row, colomn, height)
-                    this.drawCallback.drawBgBlock(row, colomn, 8, height, pixels)
+                    flipped && this.spriteFlip(flipped, pixels, spHeight)
+                    underBg ? this.makeUnderBg(pixels, row, colomn, spHeight) : this.makeTransparent(pixels, row, colomn, spHeight)
+                    this.drawCallback.drawBgBlock(row, colomn, 8, spHeight, pixels)
                 } catch (e) {
                     // catch range error
                     // throw e
@@ -459,6 +468,7 @@ PPU.GEN_NMI_IN_VBLANK = 0x80
 PPU.SHOW_BG = 0x08
 PPU.SHOW_SP = 0x10
 // $2002
+PPU.SP0_HIT = 0x40
 PPU.VBLANK_START = 0x80
 // ppu internal reg
 PPU.IREG_COARSE_X_SCROLL = 0x001f
